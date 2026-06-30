@@ -1,114 +1,70 @@
-const mongoose = require("mongoose");
+﻿const { pool } = require("../config/db");
 
-const storeSchema = new mongoose.Schema(
-{
-  storeName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-
-  ownerName: {
-    type: String,
-    trim: true
-  },
-
-  productName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-
-  category: {
-    type: String,
-    trim: true
-  },
-
-  price: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-
-  rating: {
-    type: Number,
-    default: 4.0,
-    min: 0,
-    max: 5
-  },
-
-  totalReviews: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-
-  address: {
-    shopNumber: {
-      type: String,
-      trim: true
-    },
-
-    street: {
-      type: String,
-      trim: true
-    },
-
-    marketArea: {
-      type: String,
-      trim: true
-    },
-
-    city: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    state: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    pincode: {
-      type: String,
-      trim: true
-    },
-
-    country: {
-      type: String,
-      default: "India",
-      trim: true
-    }
-  },
-
-  fullAddress: {
-    type: String,
-    trim: true
-  },
-
-  latitude: {
-    type: Number,
-    required: true
-  },
-
-  longitude: {
-    type: Number,
-    required: true
-  },
-
-  phone: {
-    type: String,
-    trim: true
-  },
-
-  isOpen: {
-    type: Boolean,
-    default: true
+async function getStores(search) {
+  let query = `SELECT id, store_name AS storeName, owner_name AS ownerName, product_name AS productName,
+                      category, price, rating, total_reviews AS totalReviews,
+                      shop_number AS shopNumber, street, market_area AS marketArea, city, state,
+                      pincode, country, full_address AS fullAddress, latitude, longitude, phone,
+                      is_open AS isOpen, created_at AS createdAt, updated_at AS updatedAt
+               FROM stores`;
+  const params = [];
+  if (search) {
+    query += ` WHERE product_name LIKE ? OR store_name LIKE ? OR category LIKE ?`;
+    const term = `%${search}%`;
+    params.push(term, term, term);
   }
-},
-{ timestamps: true }
-);
+  query += ` ORDER BY price ASC`;
+  const [rows] = await pool.query(query, params);
+  return rows;
+}
 
-module.exports = mongoose.model("Store", storeSchema);
+async function createStore(storeData) {
+  const {
+    storeName,
+    ownerName,
+    productName,
+    category,
+    price,
+    rating,
+    totalReviews,
+    address,
+    fullAddress,
+    latitude,
+    longitude,
+    phone,
+    isOpen,
+  } = storeData;
+
+  const [result] = await pool.query(
+    `INSERT INTO stores
+      (store_name, owner_name, product_name, category, price, rating, total_reviews,
+       shop_number, street, market_area, city, state, pincode, country,
+       full_address, latitude, longitude, phone, is_open)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      storeName,
+      ownerName || null,
+      productName,
+      category || null,
+      price,
+      rating || 4.0,
+      totalReviews || 0,
+      address?.shopNumber || null,
+      address?.street || null,
+      address?.marketArea || null,
+      address?.city || null,
+      address?.state || null,
+      address?.pincode || null,
+      address?.country || "India",
+      fullAddress || null,
+      latitude,
+      longitude,
+      phone || null,
+      isOpen === false ? 0 : 1,
+    ]
+  );
+
+  return { id: result.insertId, ...storeData };
+}
+
+module.exports = { getStores, createStore };

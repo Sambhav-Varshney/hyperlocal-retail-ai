@@ -1,32 +1,31 @@
-const mongoose = require("mongoose");
+﻿const { pool } = require("../config/db");
 
-const searchLogSchema = new mongoose.Schema(
-{
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  },
+async function getSearchLogs() {
+  const [rows] = await pool.query(
+    `SELECT id, user_id AS userId, keyword, city, state, latitude, longitude,
+            results_found AS resultsFound, created_at AS createdAt, updated_at AS updatedAt
+     FROM search_logs ORDER BY created_at DESC`
+  );
+  return rows;
+}
 
-  keyword: {
-    type: String,
-    required: true,
-    trim: true
-  },
+async function createSearchLog({ userId, keyword, city, state, latitude, longitude, resultsFound }) {
+  const [result] = await pool.query(
+    `INSERT INTO search_logs (user_id, keyword, city, state, latitude, longitude, results_found)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [userId || null, keyword, city || null, state || null, latitude || null, longitude || null, resultsFound || 0]
+  );
 
-  city: String,
+  return {
+    id: result.insertId,
+    userId: userId || null,
+    keyword,
+    city: city || null,
+    state: state || null,
+    latitude: latitude || null,
+    longitude: longitude || null,
+    resultsFound: resultsFound || 0,
+  };
+}
 
-  state: String,
-
-  latitude: Number,
-
-  longitude: Number,
-
-  resultsFound: {
-    type: Number,
-    default: 0
-  }
-},
-{ timestamps: true }
-);
-
-module.exports = mongoose.model("SearchLog", searchLogSchema);
+module.exports = { getSearchLogs, createSearchLog };
