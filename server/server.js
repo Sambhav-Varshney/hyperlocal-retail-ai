@@ -28,7 +28,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal server error" });
 });
 
-const PORT = process.env.PORT || 5000;
+// Default production port aligned with the frontend expectation
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });

@@ -1,17 +1,31 @@
 ﻿const { pool } = require("../config/db");
 
 async function getStores(search) {
+  // Build a SELECT that includes a computed `image` field derived from the product name.
+  // This avoids changing the database schema while enabling product images in the UI.
   let query = `SELECT id, store_name AS storeName, owner_name AS ownerName, product_name AS productName,
                       category, price, rating, total_reviews AS totalReviews,
                       shop_number AS shopNumber, street, market_area AS marketArea, city, state,
                       pincode, country, full_address AS fullAddress, latitude, longitude, phone,
-                      is_open AS isOpen, created_at AS createdAt, updated_at AS updatedAt
+                      is_open AS isOpen, created_at AS createdAt, updated_at AS updatedAt,
+                      CONCAT('https://source.unsplash.com/900x600/?', REPLACE(product_name, ' ', ',')) AS image
                FROM stores`;
   const params = [];
   if (search) {
-    query += ` WHERE product_name LIKE ? OR store_name LIKE ? OR category LIKE ?`;
-    const term = `%${search}%`;
-    params.push(term, term, term);
+    search = search.trim();
+    const terms = search.split(/\s+/).filter(Boolean);
+    const conditions = terms.map(() => `(
+      product_name LIKE ? OR
+      store_name LIKE ? OR
+      category LIKE ? OR
+      full_address LIKE ? OR
+      owner_name LIKE ?
+    )`);
+    query += ` WHERE ${conditions.join(' AND ')}`;
+    terms.forEach((term) => {
+      const wildcard = `%${term}%`;
+      params.push(wildcard, wildcard, wildcard, wildcard, wildcard);
+    });
   }
   query += ` ORDER BY price ASC`;
   const [rows] = await pool.query(query, params);
