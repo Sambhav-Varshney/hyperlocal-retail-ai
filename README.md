@@ -19,6 +19,5 @@ AI Powered Hyperlocal Retail Price Comparison Platform
 - Express.js
 - MongoDB
 
-## Project Status
-
-Phase 1 Completed
+## Project Status 
+70-80% Completed Some backend error occur  done as soon as I continously working on ..
