@@ -1,4 +1,4 @@
-﻿CREATE DATABASE IF NOT EXISTS hyperlocal_retail;
+CREATE DATABASE IF NOT EXISTS hyperlocal_retail;
 USE hyperlocal_retail;
 
 CREATE TABLE IF NOT EXISTS users (
@@ -49,6 +49,24 @@ CREATE TABLE IF NOT EXISTS stores (
   is_open TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  product_name VARCHAR(255) NOT NULL,
+  brand VARCHAR(255),
+  category_id INT NOT NULL,
+  store_id INT NOT NULL,
+  price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  quantity INT DEFAULT 0,
+  image VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  INDEX idx_products_store_id (store_id),
+  INDEX idx_products_category_id (category_id),
+  INDEX idx_products_name (product_name)
 );
 
 CREATE TABLE IF NOT EXISTS search_logs (

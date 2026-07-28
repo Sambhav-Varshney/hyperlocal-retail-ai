@@ -5,8 +5,16 @@ import { useData } from "../context/DataContext";
 import StoreCard from "../components/cards/StoreCard";
 import EmptyState from "../components/common/EmptyState";
 import HomeImage from "../components/common/HomeImage";
-import { HOME_IMAGES, imageForCategory } from "../assets/homeImages";
+import { HOME_IMAGES } from "../assets/homeImages";
 import { currency } from "../utils/format";
+
+const categoryIcons = {
+  beverages: "🥤",
+  dairy: "🥛",
+  groceries: "🛒",
+  snacks: "🍿",
+  "personal-care": "🧴",
+};
 
 function HomePage() {
   const { user } = useAuth();
@@ -15,11 +23,15 @@ function HomePage() {
   const [homeSearch, setHomeSearch] = useState(search);
   const savedIds = new Set(savedStores.map((store) => store.id));
   const featuredStores = stores.slice().sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0)).slice(0, 4);
+  const categorySlug = (category) => category.slug || category.categoryName.toLowerCase().replace(/\s+/g, "-");
+  const categoryStoreCount = (categoryName) => stores.filter((store) => store.category === categoryName).length;
+  const categoriesUnavailable = !loading && categories.length === 0;
 
   const submitSearch = (event) => {
     event.preventDefault();
-    setSearch(homeSearch);
-    navigate("/search");
+    const keyword = homeSearch.trim();
+    setSearch(keyword);
+    navigate(`/search?keyword=${encodeURIComponent(keyword)}`);
   };
 
   return (
@@ -51,14 +63,31 @@ function HomePage() {
         </section>
 
         <section className="home-section">
-          <div className="panel-heading compact"><div><p className="eyebrow">Browse</p><h2>Shop by category</h2></div><Link className="ghost-action" to="/categories">View all</Link></div>
-          <div className="home-category-grid">
-            {loading ? Array.from({ length: 5 }).map((_, index) => <div className="home-skeleton category-skeleton" key={index} />) : categories.slice(0, 5).map((category) => (
-              <Link key={category.id} className="home-category-card" to={`/search?category=${encodeURIComponent(category.categoryName)}`}>
-                <HomeImage className="home-category-image" src={imageForCategory(category.categoryName)} alt={`${category.categoryName} products`} lazy />
-                <span className="home-category-overlay" /><span className="home-category-content"><strong>{category.categoryName}</strong><small>{stores.filter((store) => store.category === category.categoryName).length} stores</small></span>
-              </Link>
-            ))}
+          <div className="panel-heading compact"><div><p className="eyebrow">Browse</p><h2>Popular Categories</h2></div><Link className="ghost-action" to="/categories">View all</Link></div>
+          <div className="home-popular-grid">
+            {loading ? Array.from({ length: 5 }).map((_, index) => <div className="home-skeleton home-popular-skeleton" key={index} />) : categoriesUnavailable ? (
+              <div className="home-category-error">
+                <div><p className="eyebrow">Categories unavailable</p><h3>We couldn’t load categories right now.</h3><p>Please check your connection and try again.</p></div>
+                <button className="ghost-action" type="button" onClick={() => window.location.reload()}>Retry</button>
+              </div>
+            ) : categories.slice(0, 5).map((category) => {
+              const storeCount = categoryStoreCount(category.categoryName);
+              const slug = categorySlug(category);
+
+              return (
+                <Link key={category.id} className="home-popular-card" to={`/search?category=${encodeURIComponent(slug)}`}>
+                  <div className="home-popular-card-top">
+                    <span className="home-popular-icon" aria-hidden="true">{categoryIcons[slug] || "🛍️"}</span>
+                    <span className="home-popular-count">{storeCount ? `${storeCount} stores` : "Coming Soon"}</span>
+                  </div>
+                  <div className="home-popular-copy">
+                    <h3>{category.categoryName}</h3>
+                    <p>{category.description || `Discover ${category.categoryName.toLowerCase()} from local stores.`}</p>
+                  </div>
+                  <span className="home-popular-explore" aria-hidden="true">Explore <span>→</span></span>
+                </Link>
+              );
+            })}
           </div>
         </section>
 

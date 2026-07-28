@@ -2,9 +2,24 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import api from "../services/api";
 import { useAuth } from "./AuthContext";
 import { useUI } from "./UIContext";
-import { distanceKm, getBudgetType, hasOffer, safeJSONParse } from "../utils/format";
+import { distanceKm, getBudgetType, safeJSONParse } from "../utils/format";
 
 const DataContext = createContext(null);
+
+const normalizeFilterValue = (value) => String(value ?? "").trim().toLowerCase();
+
+const getOfferState = (store) => {
+  const offerValue = store.hasOffer ?? store.offerAvailable ?? store.offer ?? store.discount ?? store.discountPercent ?? store.offerPrice;
+  if (offerValue === undefined || offerValue === null || offerValue === "") return null;
+  if (typeof offerValue === "boolean") return offerValue;
+  if (typeof offerValue === "number") return offerValue > 0;
+  return ["1", "true", "yes", "available", "active"].includes(normalizeFilterValue(offerValue));
+};
+
+const isStoreOpen = (store) => {
+  if (store.isOpen === undefined || store.isOpen === null) return null;
+  return [1, true, "1", "true", "open"].includes(store.isOpen) || normalizeFilterValue(store.isOpen) === "open";
+};
 
 export function DataProvider({ children }) {
   const { user } = useAuth();
@@ -47,23 +62,31 @@ export function DataProvider({ children }) {
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
-    try {
-      const [categoryData, storeData, userData, logData] = await Promise.all([
-        api.getCategories(),
-        api.getStores(),
-        api.getUsers(),
-        api.getSearchLogs(),
-      ]);
-      setCategories(categoryData || []);
-      setStores(storeData || []);
-      setUsers(userData || []);
-      setSearchLogs(logData || []);
-    } catch (error) {
-      showToast(error.message || "Unable to load dashboard data", "error");
-      // leave empty; frontend will show empty states when backend data is not available
-    } finally {
-      setLoading(false);
+    const results = await Promise.allSettled([
+      api.getCategories(),
+      api.getStores(),
+      api.getUsers(),
+      api.getSearchLogs(),
+    ]);
+
+    const [categoriesResult, storesResult, usersResult, searchLogsResult] = results;
+
+    if (categoriesResult.status === "fulfilled") {
+      setCategories(Array.isArray(categoriesResult.value) ? categoriesResult.value : []);
     }
+    if (storesResult.status === "fulfilled") setStores(storesResult.value || []);
+    if (usersResult.status === "fulfilled") setUsers(usersResult.value || []);
+    if (searchLogsResult.status === "fulfilled") setSearchLogs(searchLogsResult.value || []);
+
+    const failedRequests = results.filter((result) => result.status === "rejected");
+    if (failedRequests.length) {
+      showToast(
+        failedRequests[0].reason?.message || "Some dashboard data could not be loaded",
+        "error"
+      );
+    }
+
+    setLoading(false);
   }, [showToast]);
 
   useEffect(() => {
@@ -95,40 +118,82 @@ export function DataProvider({ children }) {
   }, [recentViews]);
 
   const filteredStores = useMemo(() => {
+    const normalizedSelectedCategory = normalizeFilterValue(selectedCategory);
+    const selectedCategoryData = categories.find((category) =>
+      [category.id, category.slug, category.categoryName].some(
+        (value) => normalizeFilterValue(value) === normalizedSelectedCategory
+      )
+    );
+    const selectedCategoryValues = new Set(
+      [
+        selectedCategory,
+        selectedCategoryData?.id,
+        selectedCategoryData?.slug,
+        selectedCategoryData?.categoryName,
+      ].map(normalizeFilterValue).filter(Boolean)
+    );
+
     const withDistance = stores.map((store) => ({
       ...store,
       distance: distanceKm(store, location),
-      hasOffer: hasOffer(store),
+      hasOffer: getOfferState(store),
     }));
 
     const term = search.trim().toLowerCase();
 
     const matched = withDistance
-      .filter((store) => selectedCategory === "All" || store.category === selectedCategory)
-      .filter((store) => budget === "All" || getBudgetType(store.price) === budget)
-      .filter((store) => minRating === 0 || Number(store.rating || 0) >= minRating)
-      .filter((store) => !showOpenNow || store.isOpen)
-      .filter((store) => !showOffers || store.hasOffer)
+      .filter((store) => {
+        if (!normalizedSelectedCategory || normalizedSelectedCategory === "all") return true;
+
+        const storeCategoryValues = [
+          store.categoryId,
+          store.category_id,
+          store.categorySlug,
+          store.category_slug,
+          store.category,
+        ].map(normalizeFilterValue).filter(Boolean);
+
+        return storeCategoryValues.some((value) => selectedCategoryValues.has(value));
+      })
+      .filter((store) => {
+        if (!budget || budget === "All") return true;
+        if (store.budget !== undefined && store.budget !== null && store.budget !== "") {
+          return normalizeFilterValue(store.budget) === normalizeFilterValue(budget);
+        }
+        if (store.price === undefined || store.price === null || store.price === "") return true;
+
+        const price = Number(store.price);
+        if (!Number.isFinite(price) || price <= 0) return true;
+        if (budget === "under-100") return price < 100;
+        if (budget === "100-500") return price >= 100 && price <= 500;
+        if (budget === "500-1000") return price > 500 && price <= 1000;
+        if (budget === "above-1000") return price > 1000;
+
+        return getBudgetType(price) === budget;
+      })
+      .filter((store) => {
+        if (!minRating) return true;
+        if (store.rating === undefined || store.rating === null || store.rating === "") return true;
+
+        const rating = Number(store.rating);
+        return Number.isNaN(rating) ? true : rating >= minRating;
+      })
+      .filter((store) => !showOpenNow || isStoreOpen(store) !== false)
+      .filter((store) => !showOffers || store.hasOffer !== false)
       .filter((store) => {
         if (!term) return true;
 
-        if (searchType === "Products") {
-          return store.productName?.toLowerCase().includes(term);
-        }
-
-        if (searchType === "Stores") {
-          return store.storeName?.toLowerCase().includes(term);
-        }
-
-        if (searchType === "Categories") {
-          return store.category?.toLowerCase().includes(term);
-        }
-
-        return (
-          store.productName?.toLowerCase().includes(term) ||
-          store.storeName?.toLowerCase().includes(term) ||
-          store.category?.toLowerCase().includes(term)
-        );
+        return [
+          store.productName,
+          store.brand,
+          store.storeName,
+          store.category,
+          store.fullAddress,
+          store.street,
+          store.marketArea,
+          store.city,
+          store.state,
+        ].some((value) => normalizeFilterValue(value).includes(term));
       })
       .map((store) => {
         if (!term) {
@@ -146,8 +211,8 @@ export function DataProvider({ children }) {
         return { ...store, matchReason: "Partial Match" };
       })
       .sort((a, b) => {
-        if (sortBy === "Price Low") return Number(a.price || 0) - Number(b.price || 0);
-        if (sortBy === "Rating High") return Number(b.rating || 0) - Number(a.rating || 0);
+        if (sortBy === "Price Low") return Number(a.price ?? Infinity) - Number(b.price ?? Infinity);
+        if (sortBy === "Rating High") return Number(b.rating ?? -Infinity) - Number(a.rating ?? -Infinity);
         if (sortBy === "Nearby") return (a.distance ?? 99999) - (b.distance ?? 99999);
         return Number(a.price || 0) - Number(b.price || 0);
       });
@@ -155,12 +220,12 @@ export function DataProvider({ children }) {
     return matched;
   }, [
     stores,
+    categories,
     selectedCategory,
     budget,
     sortBy,
     location,
     search,
-    searchType,
     showOpenNow,
     showOffers,
     minRating,
@@ -191,7 +256,7 @@ export function DataProvider({ children }) {
         });
       }
 
-      showToast(`Found ${storeData?.length || 0} matching stores`);
+      showToast(`Found ${storeData?.length || 0} matching ${storeData?.length === 1 ? "result" : "results"}`);
     } catch (error) {
       showToast(error.message || "Search failed", "error");
       setStores([]);

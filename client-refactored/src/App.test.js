@@ -80,6 +80,6 @@ test("categories page renders without crashing", async () => {
 test("search page renders without crashing", async () => {
   renderAt("/search");
   await waitFor(() => {
-    expect(screen.getByPlaceholderText("Search products, stores, or categories")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search stores, products, brands or areas...")).toBeInTheDocument();
   });
 });

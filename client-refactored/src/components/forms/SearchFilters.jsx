@@ -1,10 +1,16 @@
-import { BUDGET_OPTIONS, SEARCH_TYPES, SORT_OPTIONS } from "../../utils/constants";
+import { SORT_OPTIONS } from "../../utils/constants";
+
+const PRICE_RANGE_OPTIONS = [
+  { value: "All", label: "All" },
+  { value: "under-100", label: "Under ₹100" },
+  { value: "100-500", label: "₹100–₹500" },
+  { value: "500-1000", label: "₹500–₹1000" },
+  { value: "above-1000", label: "Above ₹1000" },
+];
 
 function SearchFilters({
   search,
   setSearch,
-  searchType,
-  setSearchType,
   selectedCategory,
   setSelectedCategory,
   budget,
@@ -36,7 +42,7 @@ function SearchFilters({
           onKeyDown={(event) => {
             if (event.key === "Enter") onSearch();
           }}
-          placeholder="Search products, stores, or categories"
+          placeholder="Search stores, products, brands or areas..."
         />
         <button className="primary-action" onClick={onSearch} disabled={loading}>
           {loading ? "Searching..." : "Search"}
@@ -44,37 +50,27 @@ function SearchFilters({
       </div>
 
       <div className="filter-grid">
-        {setSearchType ? (
-          <label>
-            Search in
-            <select value={searchType} onChange={(event) => setSearchType(event.target.value)}>
-              {SEARCH_TYPES.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-        ) : null}
         <label>
           Category
           <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
             <option value="All">All categories</option>
             {categories.map((category) => (
-              <option key={category.id} value={category.categoryName}>
+              <option key={category.id} value={category.slug || category.id}>
                 {category.categoryName}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Budget
+          Price Range
           <select value={budget} onChange={(event) => setBudget(event.target.value)}>
-            {BUDGET_OPTIONS.map((option) => (
-              <option key={option}>{option}</option>
+            {PRICE_RANGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </label>
         <label>
-          Sort
+          Sort By
           <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
             {SORT_OPTIONS.map((option) => (
               <option key={option}>{option}</option>

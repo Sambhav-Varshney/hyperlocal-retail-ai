@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import SearchFilters from "../components/forms/SearchFilters";
 import StoreCard from "../components/cards/StoreCard";
@@ -9,13 +8,10 @@ import RecommendationPanel from "../components/ui/RecommendationPanel";
 import EmptyState from "../components/common/EmptyState";
 
 function SearchPage() {
-  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const {
     search,
     setSearch,
-    searchType,
-    setSearchType,
     selectedCategory,
     setSelectedCategory,
     budget,
@@ -23,7 +19,6 @@ function SearchPage() {
     sortBy,
     setSortBy,
     categories,
-    handleSearch,
     handleUseLocation,
     location,
     loading,
@@ -41,25 +36,27 @@ function SearchPage() {
     setMinRating,
   } = useData();
 
-  // Pre-fill the category filter when arriving from a "/search?category=..." link
-  // (e.g. from the Home or Categories pages).
   useEffect(() => {
     const categoryParam = searchParams.get("category");
-    if (categoryParam) setSelectedCategory(categoryParam);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+    const queryParam = searchParams.get("q") || searchParams.get("keyword");
+
+    if (queryParam) setSearch(queryParam);
+    if (categoryParam) {
+      const matchedCategory = categories.find(
+        (category) => category.slug === categoryParam || category.categoryName.toLowerCase() === categoryParam.toLowerCase()
+      );
+      setSelectedCategory(matchedCategory?.slug || matchedCategory?.id || categoryParam);
+    }
+  }, [searchParams, categories, setSearch, setSelectedCategory]);
 
   const savedIds = new Set(savedStores.map((store) => store.id));
   const compareIds = new Set(compareStores.map((store) => store.id));
-
   return (
     <div className="content-grid">
       <div className="results-column">
         <SearchFilters
           search={search}
           setSearch={setSearch}
-          searchType={searchType}
-          setSearchType={setSearchType}
           selectedCategory={selectedCategory}
           setSelectedCategory={setSelectedCategory}
           budget={budget}
@@ -67,17 +64,17 @@ function SearchPage() {
           sortBy={sortBy}
           setSortBy={setSortBy}
           categories={categories}
-          onSearch={handleSearch}
+          onSearch={() => setSearch(search.trim())}
           onUseLocation={handleUseLocation}
           location={location}
           loading={loading}
         />
 
-        <div className="panel">
+        <div className="panel search-results-panel">
           <div className="results-header">
             <div>
               <p className="eyebrow">Results</p>
-              <h2>{filteredStores.length} stores match your filters</h2>
+              <h2>{filteredStores.length ? `${filteredStores.length} ${filteredStores.length === 1 ? "result" : "results"} found` : "No results found"}</h2>
             </div>
             <div className="card-actions">
               <label className="pill">
@@ -94,19 +91,21 @@ function SearchPage() {
                   checked={showOffers}
                   onChange={(event) => setShowOffers(event.target.checked)}
                 />
-                {" "}Offers
+                {" "}Offers only
               </label>
               <select value={minRating} onChange={(event) => setMinRating(Number(event.target.value))}>
-                <option value={0}>Any rating</option>
-                <option value={3}>3+ rating</option>
-                <option value={4}>4+ rating</option>
-                <option value={4.5}>4.5+ rating</option>
+                <option value={0}>Any</option>
+                <option value={4}>4★+</option>
+                <option value={4.5}>4.5★+</option>
+                <option value={5}>5★</option>
               </select>
             </div>
           </div>
 
-          <div className="store-grid">
-            {filteredStores.length ? (
+          <div className="store-grid search-store-grid">
+            {loading ? (
+              Array.from({ length: 6 }).map((_, index) => <div className="home-skeleton store-skeleton" key={index} />)
+            ) : filteredStores.length ? (
               filteredStores.map((store) => (
                 <div key={store.id} className="store-card-wrapper">
                   <StoreCard
@@ -115,6 +114,7 @@ function SearchPage() {
                     bestDeal={bestPrice !== null && Number(store.price || 0) === bestPrice}
                     saved={savedIds.has(store.id)}
                     onSave={toggleSavedStore}
+                    visual
                   />
                   <button
                     className="ghost-action"
@@ -126,9 +126,7 @@ function SearchPage() {
                 </div>
               ))
             ) : (
-              <EmptyState>
-                {user ? "No stores match these filters yet." : "Search stores or refine filters to see results."}
-              </EmptyState>
+              <EmptyState>No results found matching your filters. Try changing category or search keyword.</EmptyState>
             )}
           </div>
         </div>

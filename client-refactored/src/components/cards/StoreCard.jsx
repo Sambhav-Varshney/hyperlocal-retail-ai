@@ -1,11 +1,23 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { currency, getBudgetType } from "../../utils/format";
 import { imageForCategory } from "../../assets/homeImages";
 import HomeImage from "../common/HomeImage";
 
 function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false }) {
+  const navigate = useNavigate();
+  const address = store.fullAddress || [store.marketArea, store.city, store.state].filter(Boolean).join(", ");
+  const isOpen = Boolean(store.isOpen);
+  const openDetails = () => navigate(`/store/${store.id}`);
+
+  const handleCardKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openDetails();
+    }
+  };
+
   return (
-    <article className="store-card">
+    <article className="store-card store-result-card" role="link" tabIndex={0} onClick={openDetails} onKeyDown={handleCardKeyDown}>
       {visual ? (
         <div className="store-card-image-wrap">
           <HomeImage
@@ -22,29 +34,29 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false })
           <h3>{store.storeName}</h3>
           <span>{store.productName}</span>
         </div>
-        <button className={saved ? "save-button saved" : "save-button"} onClick={() => onSave(store)}>
+        <button className={saved ? "save-button saved" : "save-button"} onClick={(event) => { event.stopPropagation(); onSave(store); }}>
           {saved ? "Saved" : "Save"}
         </button>
       </div>
       <div className="price-line">
-        <strong>{currency(store.price)}</strong>
+        <strong>{store.price ? currency(store.price) : "Price on request"}</strong>
         {bestDeal ? <span>Best deal</span> : null}
       </div>
       <div className="meta-grid">
-        <span>Rating {Number(store.rating || 0).toFixed(1)}</span>
-        <span>{getBudgetType(store.price)}</span>
+        <span>⭐ {Number(store.rating || 0).toFixed(1)}</span>
+        <span>{store.price ? getBudgetType(store.price) : "Price varies"}</span>
+        <span className={isOpen ? "store-status open" : "store-status closed"}>{isOpen ? "Open now" : "Closed"}</span>
         <span>{distance ? `${distance.toFixed(1)} km` : "Distance N/A"}</span>
       </div>
-      <p className="address-line">
-        {store.fullAddress || [store.marketArea, store.city, store.state].filter(Boolean).join(", ")}
-      </p>
+      <p className="address-line">{address || "Address available on store details"}</p>
       <div className="card-actions">
-        <Link to={`/store/${store.id}`}>Details</Link>
+        <Link to={`/store/${store.id}`} onClick={(event) => event.stopPropagation()}>View details</Link>
         {store.latitude && store.longitude ? (
           <a
             href={`https://www.google.com/maps?q=${store.latitude},${store.longitude}`}
             target="_blank"
             rel="noreferrer"
+            onClick={(event) => event.stopPropagation()}
           >
             Map
           </a>
