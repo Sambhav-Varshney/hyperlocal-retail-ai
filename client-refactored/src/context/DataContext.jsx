@@ -285,22 +285,40 @@ export function DataProvider({ children }) {
   }, [showToast]);
 
   const addToCompare = useCallback(
-    (store) => {
+    (item) => {
+      if (!item || (item.id === undefined && item.productId === undefined)) return;
       setCompareStores((current) => {
-        if (current.some((item) => item.id === store.id)) return current;
+        const itemId = item.id ?? item.productId;
+        const exists = current.some((existing) => (existing.id ?? existing.productId) === itemId);
+        if (exists) return current;
         if (current.length >= 4) {
-          showToast("You can compare up to 4 stores only", "error");
+          showToast("You can compare up to 4 items only", "error");
           return current;
         }
-        return [...current, store];
+        return [...current, item];
       });
     },
     [showToast]
   );
 
-  const removeFromCompare = useCallback((storeId) => {
-    setCompareStores((current) => current.filter((item) => item.id !== storeId));
+  const removeFromCompare = useCallback((itemId) => {
+    if (itemId === undefined || itemId === null) return;
+    setCompareStores((current) =>
+      current.filter((item) => String(item.id ?? item.productId) !== String(itemId))
+    );
   }, []);
+
+  const clearCompare = useCallback(() => {
+    setCompareStores([]);
+  }, []);
+
+  const isCompared = useCallback(
+    (itemId) => {
+      if (itemId === undefined || itemId === null) return false;
+      return compareStores.some((item) => String(item.id ?? item.productId) === String(itemId));
+    },
+    [compareStores]
+  );
 
   const toggleSavedStore = useCallback((store) => {
     setSavedStores((current) => {
@@ -361,9 +379,13 @@ export function DataProvider({ children }) {
     bestPrice,
     handleSearch,
     handleUseLocation,
+    compareItems: compareStores,
     compareStores,
     addToCompare,
     removeFromCompare,
+    clearCompare,
+    isCompared,
+    isInCompare: isCompared,
     savedStores,
     toggleSavedStore,
     savedProducts,
