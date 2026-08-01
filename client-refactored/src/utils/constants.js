@@ -1,5 +1,5 @@
 export const BUDGET_OPTIONS = ["All", "Budget", "Mid Range", "Premium"];
-export const SORT_OPTIONS = ["Best Match", "Price Low", "Rating High", "Nearby"];
+export const SORT_OPTIONS = ["Best Match", "Lowest Price", "Highest Price", "Highest Rating", "Nearest Store"];
 export const SEARCH_TYPES = ["All", "Products", "Stores", "Categories"];
 export const RATING_OPTIONS = [0, 3, 4, 4.5, 5];
 

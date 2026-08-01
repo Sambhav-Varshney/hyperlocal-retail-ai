@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+import { getBudgetType, safeJSONParse } from "../utils/format";
+import { calculateDistance, DEFAULT_MARKET_LOCATION } from "../utils/distanceUtils";
+import { isSameProductFamily, getProductDisplayName } from "../utils/productMatcher";
 import { useAuth } from "./AuthContext";
 import { useUI } from "./UIContext";
-import { distanceKm, getBudgetType, safeJSONParse } from "../utils/format";
 
 const DataContext = createContext(null);
 
@@ -32,6 +34,7 @@ export function DataProvider({ children }) {
   const [loading, setLoading] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [committedSearch, setCommittedSearch] = useState("");
   const [searchType, setSearchType] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [budget, setBudget] = useState("All");
@@ -133,13 +136,14 @@ export function DataProvider({ children }) {
       ].map(normalizeFilterValue).filter(Boolean)
     );
 
+    const activeLoc = location || DEFAULT_MARKET_LOCATION;
     const withDistance = stores.map((store) => ({
       ...store,
-      distance: distanceKm(store, location),
+      distance: calculateDistance(activeLoc.lat, activeLoc.lon, store.latitude, store.longitude),
       hasOffer: getOfferState(store),
     }));
 
-    const term = search.trim().toLowerCase();
+    const term = committedSearch.trim().toLowerCase();
 
     const matched = withDistance
       .filter((store) => {
@@ -183,17 +187,12 @@ export function DataProvider({ children }) {
       .filter((store) => {
         if (!term) return true;
 
-        return [
-          store.productName,
-          store.brand,
-          store.storeName,
-          store.category,
-          store.fullAddress,
-          store.street,
-          store.marketArea,
-          store.city,
-          store.state,
-        ].some((value) => normalizeFilterValue(value).includes(term));
+        const pName = normalizeFilterValue(store.productName);
+        const bName = normalizeFilterValue(store.brand);
+        const cName = normalizeFilterValue(store.category);
+        const sName = normalizeFilterValue(store.storeName);
+
+        return pName.includes(term) || bName.includes(term) || cName.includes(term) || sName.includes(term);
       })
       .map((store) => {
         if (!term) {
@@ -211,10 +210,11 @@ export function DataProvider({ children }) {
         return { ...store, matchReason: "Partial Match" };
       })
       .sort((a, b) => {
-        if (sortBy === "Price Low") return Number(a.price ?? Infinity) - Number(b.price ?? Infinity);
-        if (sortBy === "Rating High") return Number(b.rating ?? -Infinity) - Number(a.rating ?? -Infinity);
-        if (sortBy === "Nearby") return (a.distance ?? 99999) - (b.distance ?? 99999);
-        return Number(a.price || 0) - Number(b.price || 0);
+        if (sortBy === "Lowest Price" || sortBy === "Price Low") return Number(a.price ?? Infinity) - Number(b.price ?? Infinity);
+        if (sortBy === "Highest Price") return Number(b.price ?? -Infinity) - Number(a.price ?? -Infinity);
+        if (sortBy === "Highest Rating" || sortBy === "Rating High") return Number(b.rating ?? -Infinity) - Number(a.rating ?? -Infinity);
+        if (sortBy === "Nearest Store" || sortBy === "Nearby") return (a.distance ?? 99999) - (b.distance ?? 99999);
+        return 0; // Best Match preserves relevance order
       });
 
     return matched;
@@ -225,7 +225,7 @@ export function DataProvider({ children }) {
     budget,
     sortBy,
     location,
-    search,
+    committedSearch,
     showOpenNow,
     showOffers,
     minRating,
@@ -235,35 +235,40 @@ export function DataProvider({ children }) {
     ? Math.min(...filteredStores.map((store) => Number(store.price || 0)))
     : null;
 
-  const handleSearch = useCallback(async () => {
-    setLoading(true);
-    try {
-      const storeData = await api.getStores(search.trim());
-      setStores(storeData || []);
+  const handleSearch = useCallback(
+    async (explicitQuery) => {
+      const term = (explicitQuery !== undefined ? explicitQuery : search).trim();
+      setSearch(term);
+      setCommittedSearch(term);
 
-      if (search.trim()) {
-        setRecentSearches((current) =>
-          [search.trim(), ...current.filter((item) => item !== search.trim())].slice(0, 8)
-        );
-        await api.createSearchLog({
-          userId: user?.id,
-          keyword: search.trim(),
-          city: location?.city || "",
-          state: location?.state || "",
-          latitude: location?.lat,
-          longitude: location?.lon,
-          resultsFound: storeData?.length || 0,
-        });
+      setLoading(true);
+      try {
+        const storeData = await api.getStores(term);
+        setStores(storeData || []);
+
+        if (term) {
+          setRecentSearches((current) =>
+            [term, ...current.filter((item) => item !== term)].slice(0, 8)
+          );
+          await api.createSearchLog({
+            userId: user?.id,
+            keyword: term,
+            city: location?.city || "",
+            state: location?.state || "",
+            latitude: location?.lat,
+            longitude: location?.lon,
+            resultsFound: storeData?.length || 0,
+          });
+        }
+      } catch (error) {
+        showToast(error.message || "Search failed", "error");
+        setStores([]);
+      } finally {
+        setLoading(false);
       }
-
-      showToast(`Found ${storeData?.length || 0} matching ${storeData?.length === 1 ? "result" : "results"}`);
-    } catch (error) {
-      showToast(error.message || "Search failed", "error");
-      setStores([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [search, user, location, showToast]);
+    },
+    [search, user, location, showToast]
+  );
 
   const handleUseLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -291,6 +296,19 @@ export function DataProvider({ children }) {
         const itemId = item.id ?? item.productId;
         const exists = current.some((existing) => (existing.id ?? existing.productId) === itemId);
         if (exists) return current;
+
+        if (current.length > 0) {
+          const firstItem = current[0];
+          if (!isSameProductFamily(firstItem, item)) {
+            const activeFamilyName = getProductDisplayName(firstItem);
+            showToast(
+              `You're currently comparing ${activeFamilyName} across nearby stores. Clear the comparison to compare another product.`,
+              "error"
+            );
+            return current;
+          }
+        }
+
         if (current.length >= 4) {
           showToast("You can compare up to 4 items only", "error");
           return current;
@@ -352,6 +370,17 @@ export function DataProvider({ children }) {
     setRecentViews((current) => [store, ...current.filter((item) => item.id !== store.id)].slice(0, 12));
   }, []);
 
+  const resetFilters = useCallback(() => {
+    setSearch("");
+    setCommittedSearch("");
+    setSelectedCategory("All");
+    setBudget("All");
+    setSortBy("Best Match");
+    setShowOpenNow(false);
+    setShowOffers(false);
+    setMinRating(0);
+  }, []);
+
   const value = {
     categories,
     stores,
@@ -360,6 +389,7 @@ export function DataProvider({ children }) {
     loading,
     search,
     setSearch,
+    committedSearch,
     searchType,
     setSearchType,
     selectedCategory,
@@ -379,6 +409,7 @@ export function DataProvider({ children }) {
     bestPrice,
     handleSearch,
     handleUseLocation,
+    resetFilters,
     compareItems: compareStores,
     compareStores,
     addToCompare,

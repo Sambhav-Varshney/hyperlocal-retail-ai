@@ -12,6 +12,7 @@ function SearchPage() {
   const {
     search,
     setSearch,
+    handleSearch,
     selectedCategory,
     setSelectedCategory,
     budget,
@@ -26,31 +27,33 @@ function SearchPage() {
     bestPrice,
     savedStores,
     toggleSavedStore,
-    addToCompare,
-    compareStores,
     showOpenNow,
     setShowOpenNow,
     showOffers,
     setShowOffers,
     minRating,
     setMinRating,
+    resetFilters,
   } = useData();
+
+  // SINGLE SOURCE OF TRUTH DATASET
+  const visibleProducts = filteredStores;
 
   useEffect(() => {
     const categoryParam = searchParams.get("category");
     const queryParam = searchParams.get("q") || searchParams.get("keyword");
 
-    if (queryParam) setSearch(queryParam);
+    if (queryParam) handleSearch(queryParam);
     if (categoryParam) {
       const matchedCategory = categories.find(
         (category) => category.slug === categoryParam || category.categoryName.toLowerCase() === categoryParam.toLowerCase()
       );
       setSelectedCategory(matchedCategory?.slug || matchedCategory?.id || categoryParam);
     }
-  }, [searchParams, categories, setSearch, setSelectedCategory]);
+  }, [searchParams, categories, handleSearch, setSelectedCategory]);
 
   const savedIds = new Set(savedStores.map((store) => store.id));
-  const compareIds = new Set(compareStores.map((store) => store.id));
+
   return (
     <div className="content-grid">
       <div className="results-column">
@@ -64,7 +67,7 @@ function SearchPage() {
           sortBy={sortBy}
           setSortBy={setSortBy}
           categories={categories}
-          onSearch={() => setSearch(search.trim())}
+          onSearch={() => handleSearch()}
           onUseLocation={handleUseLocation}
           location={location}
           loading={loading}
@@ -74,7 +77,11 @@ function SearchPage() {
           <div className="results-header">
             <div>
               <p className="eyebrow">Results</p>
-              <h2>{filteredStores.length ? `${filteredStores.length} ${filteredStores.length === 1 ? "result" : "results"} found` : "No results found"}</h2>
+              <h2>
+                {visibleProducts.length
+                  ? `${visibleProducts.length} ${visibleProducts.length === 1 ? "result" : "results"} found`
+                  : "No results found"}
+              </h2>
             </div>
             <div className="card-actions">
               <label className="pill">
@@ -105,36 +112,30 @@ function SearchPage() {
           <div className="store-grid search-store-grid">
             {loading ? (
               Array.from({ length: 6 }).map((_, index) => <div className="home-skeleton store-skeleton" key={index} />)
-            ) : filteredStores.length ? (
-              filteredStores.map((store) => (
-                <div key={store.id} className="store-card-wrapper">
-                  <StoreCard
-                    store={store}
-                    distance={store.distance}
-                    bestDeal={bestPrice !== null && Number(store.price || 0) === bestPrice}
-                    saved={savedIds.has(store.id)}
-                    onSave={toggleSavedStore}
-                    visual
-                  />
-                  <button
-                    className="ghost-action"
-                    disabled={compareIds.has(store.id)}
-                    onClick={() => addToCompare(store)}
-                  >
-                    {compareIds.has(store.id) ? "In comparison" : "Add to compare"}
-                  </button>
-                </div>
+            ) : visibleProducts.length ? (
+              visibleProducts.map((store) => (
+                <StoreCard
+                  key={store.id}
+                  store={store}
+                  distance={store.distance}
+                  bestDeal={bestPrice !== null && Number(store.price || 0) === bestPrice}
+                  saved={savedIds.has(store.id)}
+                  onSave={toggleSavedStore}
+                  visual
+                />
               ))
             ) : (
-              <EmptyState>No results found matching your filters. Try changing category or search keyword.</EmptyState>
+              <EmptyState title="No products found" onClearFilters={resetFilters}>
+                No products found matching your active search query or filters.
+              </EmptyState>
             )}
           </div>
         </div>
       </div>
 
       <div className="side-column">
-        <MapPanel stores={filteredStores} location={location} />
-        <RecommendationPanel stores={filteredStores} />
+        <MapPanel stores={visibleProducts} location={location} />
+        <RecommendationPanel stores={visibleProducts} />
       </div>
     </div>
   );

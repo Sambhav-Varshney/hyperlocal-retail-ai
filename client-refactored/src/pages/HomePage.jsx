@@ -19,7 +19,7 @@ const categoryIcons = {
 function HomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { categories, stores, savedStores, toggleSavedStore, bestPrice, loading, search, setSearch, handleUseLocation, location } = useData();
+  const { categories, stores, savedStores, toggleSavedStore, bestPrice, loading, search, handleSearch, handleUseLocation, location } = useData();
   const [homeSearch, setHomeSearch] = useState(search);
   const savedIds = new Set(savedStores.map((store) => store.id));
   const featuredStores = stores.slice().sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0)).slice(0, 4);
@@ -30,7 +30,7 @@ function HomePage() {
   const submitSearch = (event) => {
     event.preventDefault();
     const keyword = homeSearch.trim();
-    setSearch(keyword);
+    handleSearch(keyword);
     navigate(`/search?keyword=${encodeURIComponent(keyword)}`);
   };
 
@@ -97,7 +97,7 @@ function HomePage() {
           <div className="panel-heading compact"><div><p className="eyebrow">Top rated</p><h2>Featured stores</h2></div></div>
           <div className="store-grid">
             {loading ? Array.from({ length: 4 }).map((_, index) => <div className="home-skeleton store-skeleton" key={index} />) : featuredStores.length ? featuredStores.map((store) => (
-              <StoreCard key={store.id} store={store} distance={null} bestDeal={bestPrice !== null && Number(store.price || 0) === bestPrice} saved={savedIds.has(store.id)} onSave={toggleSavedStore} visual />
+              <StoreCard key={store.id} store={store} distance={null} bestDeal={bestPrice !== null && Number(store.price || 0) === bestPrice} saved={savedIds.has(store.id)} onSave={toggleSavedStore} visual showCompare={false} />
             )) : <EmptyState>No stores available yet. Try again shortly.</EmptyState>}
           </div>
         </section>

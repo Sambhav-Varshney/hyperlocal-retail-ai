@@ -11,7 +11,7 @@ import { HOME_IMAGES, imageForCategory } from "../assets/homeImages";
 function StoreDetailsPage() {
   const { id } = useParams();
   const { showToast } = useUI();
-  const { stores, savedStores, toggleSavedStore, addToCompare, compareStores, savedProducts, saveProduct } = useData();
+  const { stores, savedStores, toggleSavedStore, addToCompare, compareStores, isCompared, savedProducts, saveProduct } = useData();
 
   const [fetchedStore, setFetchedStore] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -291,6 +291,7 @@ function StoreDetailsPage() {
             filteredProducts.map((prod) => {
               const pId = prod.productId || prod.id;
               const isProdSaved = savedProductIds.has(pId);
+              const isProdCompared = isCompared(pId);
               return (
                 <article key={pId || prod.productName} className="product-item-card">
                   <div className="product-card-image-wrap">
@@ -308,12 +309,22 @@ function StoreDetailsPage() {
                     <p className="product-category-tag">{prod.category || "General"}</p>
                     <div className="product-card-footer">
                       <strong className="product-price">{currency(prod.price)}</strong>
-                      <button
-                        className={isProdSaved ? "save-button saved" : "save-button"}
-                        onClick={() => saveProduct(prod)}
-                      >
-                        {isProdSaved ? "Saved" : "Save"}
-                      </button>
+                      <div className="product-card-actions">
+                        <button
+                          type="button"
+                          className={isProdCompared ? "compare-action-btn added" : "compare-action-btn"}
+                          disabled={isProdCompared}
+                          onClick={() => addToCompare(prod)}
+                        >
+                          {isProdCompared ? "Added ✓" : "Compare"}
+                        </button>
+                        <button
+                          className={isProdSaved ? "save-button saved" : "save-button"}
+                          onClick={() => saveProduct(prod)}
+                        >
+                          {isProdSaved ? "Saved" : "Save"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </article>

@@ -27,9 +27,23 @@ export function UIProvider({ children }) {
     setAuthModal((current) => ({ ...current, open: false }));
   }, []);
 
+  const [compareDrawerOpen, setCompareDrawerOpen] = useState(false);
+  const openCompareDrawer = useCallback(() => setCompareDrawerOpen(true), []);
+  const closeCompareDrawer = useCallback(() => setCompareDrawerOpen(false), []);
+
   return (
     <UIContext.Provider
-      value={{ toast, showToast, closeToast, authModal, openAuthModal, closeAuthModal }}
+      value={{
+        toast,
+        showToast,
+        closeToast,
+        authModal,
+        openAuthModal,
+        closeAuthModal,
+        compareDrawerOpen,
+        openCompareDrawer,
+        closeCompareDrawer,
+      }}
     >
       {children}
     </UIContext.Provider>

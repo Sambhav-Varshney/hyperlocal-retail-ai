@@ -2,9 +2,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { currency, getBudgetType } from "../../utils/format";
 import { imageForCategory } from "../../assets/homeImages";
 import HomeImage from "../common/HomeImage";
+import { useData } from "../../context/DataContext";
 
-function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false }) {
+function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, showCompare = true }) {
   const navigate = useNavigate();
+  const { isCompared, addToCompare } = useData();
+  const itemId = store.id ?? store.productId;
+  const compared = isCompared(itemId);
+
   const address = store.fullAddress || [store.marketArea, store.city, store.state].filter(Boolean).join(", ");
   const isOpen = Boolean(store.isOpen);
   const openDetails = () => navigate(`/store/${store.id}`);
@@ -14,6 +19,11 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false })
       event.preventDefault();
       openDetails();
     }
+  };
+
+  const handleCompareClick = (event) => {
+    event.stopPropagation();
+    addToCompare(store);
   };
 
   return (
@@ -51,6 +61,16 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false })
       <p className="address-line">{address || "Address available on store details"}</p>
       <div className="card-actions">
         <Link to={`/store/${store.id}`} onClick={(event) => event.stopPropagation()}>View details</Link>
+        {showCompare ? (
+          <button
+            type="button"
+            className={compared ? "compare-action-btn added" : "compare-action-btn"}
+            disabled={compared}
+            onClick={handleCompareClick}
+          >
+            {compared ? "Added ✓" : "Compare"}
+          </button>
+        ) : null}
         {store.latitude && store.longitude ? (
           <a
             href={`https://www.google.com/maps?q=${store.latitude},${store.longitude}`}

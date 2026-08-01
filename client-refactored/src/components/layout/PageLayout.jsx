@@ -2,6 +2,8 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import Toast from "../common/Toast";
 import AuthRequiredModal from "../common/AuthRequiredModal";
+import CompareBar from "../ui/CompareBar";
+import CompareDrawer from "../ui/CompareDrawer";
 import { useUI } from "../../context/UIContext";
 
 function PageLayout({ children }) {
@@ -20,6 +22,8 @@ function PageLayout({ children }) {
       />
 
       <main>{children}</main>
+      <CompareBar />
+      <CompareDrawer />
 
       <Footer />
     </div>
