@@ -12,10 +12,9 @@ export const NAV_ITEMS = [
   { label: "Home", path: "/", auth: "public" },
   { label: "Search", path: "/search", auth: "public" },
   { label: "Categories", path: "/categories", auth: "public" },
+  { label: "Saved", path: "/saved", auth: "public" },
+  { label: "Profile", path: "/profile", auth: "public" },
   { label: "Dashboard", path: "/dashboard", auth: "user" },
-  { label: "Saved", path: "/saved", auth: "user" },
-  { label: "Compare", path: "/compare", auth: "user" },
-  { label: "Profile", path: "/profile", auth: "user" },
   { label: "Admin", path: "/admin", auth: "admin" },
   { label: "Login", path: "/login", auth: "guest" },
 ];

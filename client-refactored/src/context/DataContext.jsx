@@ -338,13 +338,55 @@ export function DataProvider({ children }) {
     [compareStores]
   );
 
-  const toggleSavedStore = useCallback((store) => {
-    setSavedStores((current) => {
-      const exists = current.some((item) => item.id === store.id);
-      if (exists) return current.filter((item) => item.id !== store.id);
-      return [store, ...current];
-    });
-  }, []);
+  const saveStore = useCallback(
+    (store) => {
+      if (!store || store.id === undefined) return;
+      setSavedStores((current) => {
+        if (current.some((item) => String(item.id) === String(store.id))) return current;
+        showToast(`${store.storeName || "Store"} saved to favorites`);
+        return [store, ...current];
+      });
+    },
+    [showToast]
+  );
+
+  const removeSavedStore = useCallback(
+    (storeId) => {
+      if (storeId === undefined || storeId === null) return;
+      setSavedStores((current) => {
+        const filtered = current.filter((item) => String(item.id) !== String(storeId));
+        if (filtered.length !== current.length) {
+          showToast("Store removed from favorites");
+        }
+        return filtered;
+      });
+    },
+    [showToast]
+  );
+
+  const isSaved = useCallback(
+    (storeId) => {
+      if (storeId === undefined || storeId === null) return false;
+      return savedStores.some((item) => String(item.id) === String(storeId));
+    },
+    [savedStores]
+  );
+
+  const toggleSavedStore = useCallback(
+    (store) => {
+      if (!store || store.id === undefined) return;
+      setSavedStores((current) => {
+        const exists = current.some((item) => String(item.id) === String(store.id));
+        if (exists) {
+          showToast("Store removed from favorites");
+          return current.filter((item) => String(item.id) !== String(store.id));
+        }
+        showToast(`${store.storeName || "Store"} saved to favorites`);
+        return [store, ...current];
+      });
+    },
+    [showToast]
+  );
 
   const saveComparison = useCallback(
     (comparison) => {
@@ -418,6 +460,10 @@ export function DataProvider({ children }) {
     isCompared,
     isInCompare: isCompared,
     savedStores,
+    saveStore,
+    removeSavedStore,
+    isSaved,
+    isSavedStore: isSaved,
     toggleSavedStore,
     savedProducts,
     saveProduct,

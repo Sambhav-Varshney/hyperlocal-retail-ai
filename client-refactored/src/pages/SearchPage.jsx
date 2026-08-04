@@ -115,7 +115,7 @@ function SearchPage() {
             ) : visibleProducts.length ? (
               visibleProducts.map((store) => (
                 <StoreCard
-                  key={store.id}
+                  key={store.productId ? `p-${store.productId}` : `s-${store.id}-${store.productName || ""}`}
                   store={store}
                   distance={store.distance}
                   bestDeal={bestPrice !== null && Number(store.price || 0) === bestPrice}

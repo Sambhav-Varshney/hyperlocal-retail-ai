@@ -7,8 +7,13 @@ import { useData } from "../../context/DataContext";
 function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, showCompare = true }) {
   const navigate = useNavigate();
   const { isCompared, addToCompare } = useData();
-  const itemId = store.id ?? store.productId;
+  const itemId = store.productId ?? store.id;
   const compared = isCompared(itemId);
+
+  // Render ONLY the matched product from the filtered item (do not use featuredProduct, store.products[0], or defaultProduct)
+  const productName = store.productName || store.product_name || store.name || "Product";
+  const price = store.price ?? store.productPrice;
+  const image = store.image || store.imageUrl || imageForCategory(store.category);
 
   const address = store.fullAddress || [store.marketArea, store.city, store.state].filter(Boolean).join(", ");
   const isOpen = Boolean(store.isOpen);
@@ -32,8 +37,8 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, s
         <div className="store-card-image-wrap">
           <HomeImage
             className="store-card-image"
-            src={store.image || store.imageUrl || imageForCategory(store.category)}
-            alt={`${store.storeName || "Local store"} storefront and products`}
+            src={image}
+            alt={`${productName} at ${store.storeName || "Local store"}`}
             lazy
           />
         </div>
@@ -42,19 +47,19 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, s
         <div>
           <p className="store-category">{store.category || "Local Store"}</p>
           <h3>{store.storeName}</h3>
-          <span>{store.productName}</span>
+          <span>{productName}</span>
         </div>
         <button className={saved ? "save-button saved" : "save-button"} onClick={(event) => { event.stopPropagation(); onSave(store); }}>
           {saved ? "Saved" : "Save"}
         </button>
       </div>
       <div className="price-line">
-        <strong>{store.price ? currency(store.price) : "Price on request"}</strong>
+        <strong>{price ? currency(price) : "Price on request"}</strong>
         {bestDeal ? <span>Best deal</span> : null}
       </div>
       <div className="meta-grid">
         <span>⭐ {Number(store.rating || 0).toFixed(1)}</span>
-        <span>{store.price ? getBudgetType(store.price) : "Price varies"}</span>
+        <span>{price ? getBudgetType(price) : "Price varies"}</span>
         <span className={isOpen ? "store-status open" : "store-status closed"}>{isOpen ? "Open now" : "Closed"}</span>
         <span>{distance ? `${distance.toFixed(1)} km` : "Distance N/A"}</span>
       </div>

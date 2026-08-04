@@ -42,7 +42,10 @@ function Navbar() {
       </nav>
 
       <div className="session-box">
-        <span>{user ? user.name : "Guest"}</span>
+        <NavLink to="/profile" className="profile-nav-link" title="User Profile">
+          <span className="profile-icon-badge" aria-hidden="true">👤</span>
+          <span>{user ? user.name : "Guest"}</span>
+        </NavLink>
         {user ? <button onClick={handleLogout}>Logout</button> : null}
       </div>
     </header>

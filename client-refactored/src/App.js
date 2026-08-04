@@ -39,6 +39,8 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/saved" element={<SavedPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
         <Route path="/product/:id" element={<ProductDetailsPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -57,26 +59,10 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/saved"
-          element={
-            <ProtectedRoute>
-              <SavedPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/compare"
           element={
             <ProtectedRoute>
               <ComparePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
             </ProtectedRoute>
           }
         />
