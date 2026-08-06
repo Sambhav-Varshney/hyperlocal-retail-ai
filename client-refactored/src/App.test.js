@@ -48,25 +48,27 @@ function renderAt(path) {
 }
 
 test("renders BazaarHub brand in the navbar", async () => {
-  render(<App />);
+  renderAt("/login");
   await waitFor(() => {
-    expect(screen.getByText("BazaarHub")).toBeInTheDocument();
+    expect(screen.getAllByText("BazaarHub").length).toBeGreaterThan(0);
   });
 });
 
-test("home page renders without crashing", async () => {
+test("home page renders without crashing for guest user", async () => {
+  localStorage.setItem("bazaarhub_guest", "true");
   render(<App />);
   await waitFor(() => {
     expect(
-      screen.getByText(/Find nearby stores, compare prices, decide smarter\./i)
+      screen.getByText(/Find nearby stores, compare prices/i)
     ).toBeInTheDocument();
   });
 });
 
-test("login page renders without crashing", async () => {
+test("login page renders without crashing with Continue as Guest button", async () => {
   renderAt("/login");
   await waitFor(() => {
     expect(screen.getByPlaceholderText("Email address")).toBeInTheDocument();
+    expect(screen.getByText(/Continue as Guest/i)).toBeInTheDocument();
   });
 });
 

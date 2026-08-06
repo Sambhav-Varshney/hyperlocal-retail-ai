@@ -146,7 +146,7 @@ function CompareDrawer() {
                   </Link>
                   <button
                     type="button"
-                    className="ghost-action compare-remove-btn"
+                    className="danger-action compare-remove-btn"
                     onClick={() => removeFromCompare(itemId)}
                   >
                     Remove

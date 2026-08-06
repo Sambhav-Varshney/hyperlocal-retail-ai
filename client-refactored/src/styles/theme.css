@@ -1,0 +1,123 @@
+/* BazaarHub Design System - Global Dark & Light Theme Architecture (Linear / Vercel / Stripe Style) */
+
+:root,
+[data-theme="dark"] {
+  /* Global Page Canvas Background */
+  --bg-main: #07111F;
+  --background: #07111F;
+
+  /* Section / Container Background */
+  --bg-section: #0B1526;
+  --surface-soft: #0B1526;
+
+  /* Card Background & Hover */
+  --bg-card: #111C31;
+  --bg-card-hover: #16243D;
+  --surface: #111C31;
+
+  /* Border Color */
+  --border: rgba(255, 255, 255, 0.06);
+  --line: rgba(255, 255, 255, 0.06);
+
+  /* Primary Blue Accent */
+  --accent: #3B82F6;
+  --accent-hover: #2563EB;
+  --primary: #3B82F6;
+  --primary-hover: #2563EB;
+
+  /* Success Green Color (Scoped strictly for available/open status badges) */
+  --success: #22C55E;
+  --green: #22C55E;
+  --green-dark: #16A34A;
+
+  /* Danger Red Color (Scoped strictly for logout, warning, delete actions) */
+  --danger: #EF4444;
+  --danger-hover: #DC2626;
+
+  /* Typography */
+  --text-main: #F8FAFC;
+  --text-body: #CBD5E1;
+  --text-muted: #94A3B8;
+  --ink: #F8FAFC;
+  --muted: #94A3B8;
+
+  /* Sticky Navbar Glassmorphism */
+  --nav-bg: rgba(7, 17, 31, 0.85);
+
+  /* Standardized Box Shadows & Radii */
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.25);
+
+  /* Badges & Soft Overlays */
+  --badge-bg: #111C31;
+  --badge-text: #CBD5E1;
+  --toggle-bg: #111C31;
+  --toggle-thumb: #07111F;
+  --accent-soft: rgba(59, 130, 246, 0.15);
+  --accent-text: #3B82F6;
+  --success-soft: rgba(34, 197, 94, 0.15);
+  --danger-soft: rgba(239, 68, 68, 0.15);
+}
+
+[data-theme="light"] {
+  /* Global Page Canvas Background */
+  --bg-main: #F8FAFC;
+  --background: #F8FAFC;
+
+  /* Section / Container Background */
+  --bg-section: #F1F5F9;
+  --surface-soft: #F1F5F9;
+
+  /* Card Background & Hover */
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F8FAFC;
+  --surface: #FFFFFF;
+
+  /* Border Color */
+  --border: #E2E8F0;
+  --line: #E2E8F0;
+
+  /* Primary Blue Accent */
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+
+  /* Success Green Color */
+  --success: #16A34A;
+  --green: #16A34A;
+  --green-dark: #15803D;
+
+  /* Danger Red Color */
+  --danger: #DC2626;
+  --danger-hover: #B91C1C;
+
+  /* Typography */
+  --text-main: #0F172A;
+  --text-body: #334155;
+  --text-muted: #64748B;
+  --ink: #0F172A;
+  --muted: #64748B;
+
+  /* Sticky Navbar Glassmorphism */
+  --nav-bg: rgba(248, 250, 252, 0.88);
+
+  /* Standardized Box Shadows & Radii */
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.08);
+
+  /* Badges & Soft Overlays */
+  --badge-bg: #F1F5F9;
+  --badge-text: #334155;
+  --toggle-bg: #E2E8F0;
+  --toggle-thumb: #FFFFFF;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+  --accent-text: #2563EB;
+  --success-soft: #DCFCE7;
+  --danger-soft: #FEE2E2;
+}
+
+/* Global 300ms theme transition */
+html, body, header, nav, main, section, div, article, panel, input, button {
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
+}

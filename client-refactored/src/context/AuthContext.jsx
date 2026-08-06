@@ -6,13 +6,16 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children, onNotify }) {
   const [user, setUser] = useState(() => safeJSONParse(localStorage.getItem("authUser")) || null);
+  const [isGuest, setIsGuest] = useState(() => localStorage.getItem("bazaarhub_guest") === "true");
   const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
     const onExpired = () => {
       setUser(null);
+      setIsGuest(false);
       localStorage.removeItem("authUser");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("bazaarhub_guest");
       onNotify?.("Session expired. Please login again.", "error");
     };
     window.addEventListener("auth:expired", onExpired);
@@ -21,8 +24,16 @@ export function AuthProvider({ children, onNotify }) {
 
   const persistSession = (auth) => {
     setUser(auth.user);
+    setIsGuest(false);
+    localStorage.removeItem("bazaarhub_guest");
     localStorage.setItem("authUser", JSON.stringify(auth.user));
     localStorage.setItem("authToken", auth.token);
+  };
+
+  const continueAsGuest = () => {
+    setIsGuest(true);
+    localStorage.setItem("bazaarhub_guest", "true");
+    onNotify?.("Continuing as guest");
   };
 
   const login = async (payload) => {
@@ -59,8 +70,10 @@ export function AuthProvider({ children, onNotify }) {
   const logout = () => {
     if (!window.confirm("Are you sure you want to logout?")) return false;
     setUser(null);
+    setIsGuest(false);
     localStorage.removeItem("authUser");
     localStorage.removeItem("authToken");
+    localStorage.removeItem("bazaarhub_guest");
     onNotify?.("Logged out");
     return true;
   };
@@ -68,7 +81,18 @@ export function AuthProvider({ children, onNotify }) {
   const isAdmin = user?.role === "admin";
 
   return (
-    <AuthContext.Provider value={{ user, authLoading, login, register, logout, isAdmin }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isGuest,
+        continueAsGuest,
+        authLoading,
+        login,
+        register,
+        logout,
+        isAdmin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

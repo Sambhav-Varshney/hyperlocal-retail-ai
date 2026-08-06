@@ -1,9 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
-import "./theme.css";
+import "./styles/theme.css";
 
+import { ThemeProvider } from "./context/ThemeContext";
 import { UIProvider, useUI } from "./context/UIContext";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
 import PageLayout from "./components/layout/PageLayout";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
@@ -32,11 +33,22 @@ function AppProviders({ children }) {
   );
 }
 
+// Default Entry Guard: App opens on /login by default unless logged in or guest mode active
+function HomeRoute() {
+  const { user, isGuest } = useAuth();
+
+  if (!user && !isGuest) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <HomePage />;
+}
+
 function AppRoutes() {
   return (
     <PageLayout>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<HomeRoute />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/saved" element={<SavedPage />} />
@@ -45,11 +57,11 @@ function AppRoutes() {
         <Route path="/product/:id" element={<ProductDetailsPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* Auth routes redirect to /dashboard when already logged in */}
+        {/* Auth routes */}
         <Route path="/login" element={<AuthPageShell />} />
         <Route path="/register" element={<AuthPageShell />} />
 
-        {/* Protected routes — redirect to /login when not authenticated */}
+        {/* Protected routes — require authenticated user session */}
         <Route
           path="/dashboard"
           element={
@@ -84,11 +96,13 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
-      <UIProvider>
-        <AppProviders>
-          <AppRoutes />
-        </AppProviders>
-      </UIProvider>
+      <ThemeProvider>
+        <UIProvider>
+          <AppProviders>
+            <AppRoutes />
+          </AppProviders>
+        </UIProvider>
+      </ThemeProvider>
     </Router>
   );
 }

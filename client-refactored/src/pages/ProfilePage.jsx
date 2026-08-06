@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
+import { useUI } from "../context/UIContext";
 import { formatDistance } from "../utils/distanceUtils";
 
 function ProfilePage() {
   const { user, logout } = useAuth();
+  const { openAuthModal } = useUI();
   const { savedStores, compareItems, recentSearches, handleSearch, removeSavedStore } = useData();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("info"); // 'info' | 'history' | 'saved' | 'settings'
@@ -15,7 +17,7 @@ function ProfilePage() {
   };
 
   const getInitials = (name) => {
-    if (!name) return "U";
+    if (!name) return "G";
     return name
       .split(" ")
       .map((n) => n[0])
@@ -29,48 +31,60 @@ function ProfilePage() {
     navigate(`/search?keyword=${encodeURIComponent(keyword)}`);
   };
 
+  const handleProtectedAction = (message) => {
+    openAuthModal("/login", message);
+  };
+
   return (
     <div className="content-grid single-column-layout profile-page-layout">
       <div className="results-column">
-        {/* User Hero Avatar Card */}
+        {/* User / Guest Hero Avatar Card */}
         <section className="panel profile-hero-panel">
           <div className="profile-hero-content">
             <div className="profile-avatar">{getInitials(user?.name)}</div>
             <div className="profile-hero-info">
               <div className="profile-name-row">
-                <h1>{user?.name || "Guest User"}</h1>
-                <span className="profile-badge">{user?.role === "admin" ? "Admin Account" : "Verified Shopper"}</span>
+                <h1>{user?.name || "Guest Shopper"}</h1>
+                <span className="profile-badge blue-verified-badge">
+                  {user ? (user.role === "admin" ? "Admin Account" : "Verified Shopper") : "Guest Access"}
+                </span>
               </div>
               <p className="profile-email">✉️ {user?.email || "guest@bazaarhub.com"}</p>
             </div>
-            <button type="button" className="ghost-action logout-btn" onClick={handleLogout}>
-              Logout 🚪
-            </button>
+            {user ? (
+              <button type="button" className="danger-action logout-btn red-logout-btn" onClick={handleLogout}>
+                Logout 🚪
+              </button>
+            ) : (
+              <Link to="/login" className="primary-action signin-profile-btn">
+                Sign In ➔
+              </Link>
+            )}
           </div>
 
-          {/* Quick Metrics Cards */}
+          {/* Premium Centered Dark Metric Cards */}
           <div className="profile-stats-grid">
-            <div className="stat-card" onClick={() => setActiveTab("saved")} style={{ cursor: "pointer" }}>
-              <span className="stat-icon">⭐</span>
-              <div className="stat-copy">
-                <strong>{savedStores.length}</strong>
-                <span>Saved Stores</span>
+            <div className="profile-metric-card" onClick={() => setActiveTab("saved")} role="button" tabIndex={0}>
+              <span className="metric-large-icon">⭐</span>
+              <div className="metric-content">
+                <strong className="metric-number">{savedStores.length}</strong>
+                <span className="metric-label">Saved Stores</span>
               </div>
             </div>
 
-            <div className="stat-card" onClick={() => setActiveTab("history")} style={{ cursor: "pointer" }}>
-              <span className="stat-icon">🔍</span>
-              <div className="stat-copy">
-                <strong>{recentSearches.length}</strong>
-                <span>Recent Searches</span>
+            <div className="profile-metric-card" onClick={() => setActiveTab("history")} role="button" tabIndex={0}>
+              <span className="metric-large-icon">🔍</span>
+              <div className="metric-content">
+                <strong className="metric-number">{recentSearches.length}</strong>
+                <span className="metric-label">Recent Searches</span>
               </div>
             </div>
 
-            <div className="stat-card">
-              <span className="stat-icon">⚖️</span>
-              <div className="stat-copy">
-                <strong>{compareItems.length}</strong>
-                <span>Items in Compare</span>
+            <div className="profile-metric-card">
+              <span className="metric-large-icon">⚖️</span>
+              <div className="metric-content">
+                <strong className="metric-number">{compareItems.length}</strong>
+                <span className="metric-label">Items in Compare</span>
               </div>
             </div>
           </div>
@@ -103,7 +117,13 @@ function ProfilePage() {
             <button
               type="button"
               className={activeTab === "settings" ? "tab-btn active" : "tab-btn"}
-              onClick={() => setActiveTab("settings")}
+              onClick={() => {
+                if (!user) {
+                  handleProtectedAction("Sign in to edit preferences and sync profile settings.");
+                } else {
+                  setActiveTab("settings");
+                }
+              }}
             >
               ⚙️ Settings
             </button>
@@ -113,11 +133,22 @@ function ProfilePage() {
             {/* Tab 1: Personal Info */}
             {activeTab === "info" ? (
               <div className="tab-pane info-pane">
-                <h3>Account Information</h3>
+                <div className="pane-header">
+                  <h3>Account Information</h3>
+                  {!user ? (
+                    <button
+                      type="button"
+                      className="primary-action profile-sync-btn"
+                      onClick={() => handleProtectedAction("Sign in to create a permanent account and sync profile data.")}
+                    >
+                      Sign In to Sync Profile ➔
+                    </button>
+                  ) : null}
+                </div>
                 <div className="info-fields-grid">
                   <div className="info-field">
                     <label>Full Name</label>
-                    <div>{user?.name || "Guest User"}</div>
+                    <div>{user?.name || "Guest Shopper"}</div>
                   </div>
                   <div className="info-field">
                     <label>Email Address</label>
@@ -125,7 +156,7 @@ function ProfilePage() {
                   </div>
                   <div className="info-field">
                     <label>Account Type</label>
-                    <div>{user?.role === "admin" ? "Administrator" : "Standard Shopper"}</div>
+                    <div>{user ? (user.role === "admin" ? "Administrator" : "Standard Shopper") : "Guest Mode"}</div>
                   </div>
                   <div className="info-field">
                     <label>Default Market Location</label>
@@ -177,19 +208,31 @@ function ProfilePage() {
                         </div>
                         <div className="profile-saved-actions">
                           <Link to={`/store/${store.id}`} className="primary-action">Details</Link>
-                          <button type="button" className="ghost-action" onClick={() => removeSavedStore(store.id)}>Remove</button>
+                          <button type="button" className="danger-action remove-btn" onClick={() => removeSavedStore(store.id)}>Remove</button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="empty-text">You haven't saved any stores yet.</p>
+                  <div className="empty-profile-saved">
+                    <p className="empty-text">You haven't saved any stores yet.</p>
+                    {!user ? (
+                      <button
+                        type="button"
+                        className="primary-action"
+                        style={{ marginTop: "12px" }}
+                        onClick={() => handleProtectedAction("Sign in to save stores across device sessions.")}
+                      >
+                        Sign in to Save Stores
+                      </button>
+                    ) : null}
+                  </div>
                 )}
               </div>
             ) : null}
 
             {/* Tab 4: Settings */}
-            {activeTab === "settings" ? (
+            {activeTab === "settings" && user ? (
               <div className="tab-pane settings-pane">
                 <h3>Preferences & Settings</h3>
                 <div className="settings-list">

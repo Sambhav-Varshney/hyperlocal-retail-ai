@@ -18,7 +18,7 @@ function SavedPage() {
               <p className="eyebrow">Favorites</p>
               <h1>Saved Stores ({savedStores.length})</h1>
               <p className="page-subtitle">
-                Quick access to your bookmarked neighborhood stores and local markets.
+                Quick access to your bookmarked stores and local markets.
               </p>
             </div>
             {savedStores.length > 0 ? (
@@ -79,7 +79,7 @@ function SavedPage() {
                       </Link>
                       <button
                         type="button"
-                        className="ghost-action remove-saved-btn"
+                        className="danger-action remove-saved-btn"
                         onClick={() => removeSavedStore(store.id)}
                       >
                         Remove
@@ -90,8 +90,13 @@ function SavedPage() {
               })}
             </div>
           ) : (
-            <EmptyState title="No saved stores yet">
-              You haven't saved any stores to your favorites. Discover local markets and save stores for quick price comparisons.
+            <EmptyState
+              icon="⭐"
+              title="No saved stores yet"
+              actionText="Explore Stores"
+              actionLink="/categories"
+            >
+              You haven't saved any stores to your favorites. Discover local stores and save them for quick access.
             </EmptyState>
           )}
         </section>
