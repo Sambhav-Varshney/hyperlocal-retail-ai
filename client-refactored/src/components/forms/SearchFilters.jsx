@@ -11,6 +11,7 @@ const PRICE_RANGE_OPTIONS = [
 function SearchFilters({
   search,
   setSearch,
+  setCommittedSearch,
   selectedCategory,
   setSelectedCategory,
   budget,
@@ -35,16 +36,48 @@ function SearchFilters({
         </button>
       </div>
 
-      <div className="search-row">
+      <div className="search-row" style={{ position: "relative" }}>
         <input
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            const val = event.target.value;
+            setSearch(val);
+            if (setCommittedSearch) {
+              setCommittedSearch(val);
+            }
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") onSearch();
           }}
           placeholder="Search stores, products, brands or areas..."
         />
-        <button className="primary-action" onClick={onSearch} disabled={loading}>
+        {search ? (
+          <button
+            type="button"
+            className="search-clear-btn"
+            onClick={() => {
+              setSearch("");
+              if (setCommittedSearch) setCommittedSearch("");
+              onSearch("");
+            }}
+            aria-label="Clear search text"
+            style={{
+              position: "absolute",
+              right: "120px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              color: "var(--text-muted)",
+              fontSize: "1.1rem",
+              cursor: "pointer",
+              padding: "4px 8px",
+            }}
+          >
+            ✕
+          </button>
+        ) : null}
+        <button className="primary-action" onClick={() => onSearch()} disabled={loading}>
           {loading ? "Searching..." : "Search"}
         </button>
       </div>

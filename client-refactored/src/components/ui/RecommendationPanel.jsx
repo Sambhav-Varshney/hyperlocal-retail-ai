@@ -6,20 +6,12 @@ function RecommendationPanel({ stores = [] }) {
   const smartPicks = useMemo(() => {
     if (!stores || stores.length === 0) return [];
 
-    // 1. Cheapest Option (Lowest Price)
-    const cheapest = stores.slice().sort((a, b) => Number(a.price || Infinity) - Number(b.price || Infinity))[0];
-
-    // 2. Highest Rated
-    const highestRated = stores.slice().sort((a, b) => Number(b.rating || -Infinity) - Number(a.rating || -Infinity))[0];
-
-    // 3. Best Value (Formula: rating / price)
-    const bestValue = stores.slice().sort((a, b) => {
-      const scoreA = Number(a.price) > 0 ? Number(a.rating || 0) / Number(a.price) : 0;
-      const scoreB = Number(b.price) > 0 ? Number(b.rating || 0) / Number(b.price) : 0;
-      return scoreB - scoreA;
-    })[0];
-
     const picks = [];
+    const usedProductNames = new Set();
+
+    // 1. Cheapest Option
+    const cheapestCandidates = stores.slice().sort((a, b) => Number(a.price || Infinity) - Number(b.price || Infinity));
+    const cheapest = cheapestCandidates[0];
 
     if (cheapest) {
       picks.push({
@@ -30,43 +22,51 @@ function RecommendationPanel({ stores = [] }) {
         storeName: cheapest.storeName || "Local Retailer",
         meta: currency(cheapest.price),
       });
+      usedProductNames.add((cheapest.productName || "").toLowerCase().trim());
     }
+
+    // 2. Highest Rated (Distinct product name)
+    const ratedCandidates = stores
+      .slice()
+      .filter((s) => !usedProductNames.has((s.productName || "").toLowerCase().trim()))
+      .sort((a, b) => Number(b.rating || -Infinity) - Number(a.rating || -Infinity));
+
+    const highestRated = ratedCandidates[0] || stores.find((s) => s.id !== cheapest?.id) || cheapest;
 
     if (highestRated) {
-      // Pick highest rated (if distinct from cheapest or as secondary pick)
-      const targetRated = (highestRated.id !== cheapest?.id)
-        ? highestRated
-        : stores.filter((s) => s.id !== cheapest?.id).sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))[0] || highestRated;
-
-      if (targetRated) {
-        picks.push({
-          type: "Highest Rated",
-          badge: "Top Rated ⭐",
-          item: targetRated,
-          productName: targetRated.productName || "Product",
-          storeName: targetRated.storeName || "Local Retailer",
-          meta: `⭐ ${Number(targetRated.rating || 0).toFixed(1)} Rating`,
-        });
-      }
+      picks.push({
+        type: "Highest Rated",
+        badge: "Top Rated ⭐",
+        item: highestRated,
+        productName: highestRated.productName || "Product",
+        storeName: highestRated.storeName || "Local Retailer",
+        meta: `⭐ ${Number(highestRated.rating || 0).toFixed(1)} Rating`,
+      });
+      usedProductNames.add((highestRated.productName || "").toLowerCase().trim());
     }
 
-    if (bestValue) {
-      const existingIds = new Set(picks.map((p) => p.item.id));
-      const targetValue = !existingIds.has(bestValue.id)
-        ? bestValue
-        : stores.filter((s) => !existingIds.has(s.id)).sort((a, b) => (Number(b.rating || 0) / Number(b.price || 1)) - (Number(a.rating || 0) / Number(a.price || 1)))[0] || bestValue;
+    // 3. Best Value (Distinct product name)
+    const valueCandidates = stores
+      .slice()
+      .filter((s) => !usedProductNames.has((s.productName || "").toLowerCase().trim()))
+      .sort((a, b) => {
+        const scoreA = Number(a.price) > 0 ? Number(a.rating || 0) / Number(a.price) : 0;
+        const scoreB = Number(b.price) > 0 ? Number(b.rating || 0) / Number(b.price) : 0;
+        return scoreB - scoreA;
+      });
 
-      if (targetValue) {
-        const valueScore = ((Number(targetValue.rating || 0) / Number(targetValue.price || 1)) * 100).toFixed(1);
-        picks.push({
-          type: "Best Value",
-          badge: "Best Value 💡",
-          item: targetValue,
-          productName: targetValue.productName || "Product",
-          storeName: targetValue.storeName || "Local Retailer",
-          meta: `Score ${valueScore} • ${currency(targetValue.price)}`,
-        });
-      }
+    const bestValue = valueCandidates[0] || stores.filter((s) => s.id !== cheapest?.id && s.id !== highestRated?.id)[0] || cheapest;
+
+    if (bestValue && picks.length < 3) {
+      const valueScore = ((Number(bestValue.rating || 0) / Number(bestValue.price || 1)) * 100).toFixed(1);
+      picks.push({
+        type: "Best Value",
+        badge: "Best Value 💡",
+        item: bestValue,
+        productName: bestValue.productName || "Product",
+        storeName: bestValue.storeName || "Local Retailer",
+        meta: `Score ${valueScore} • ${currency(bestValue.price)}`,
+      });
     }
 
     return picks.slice(0, 3);
@@ -83,7 +83,7 @@ function RecommendationPanel({ stores = [] }) {
       {smartPicks.length ? (
         <div className="smart-picks-list">
           {smartPicks.map((pick) => (
-            <div className="recommendation-item smart-pick-card" key={`${pick.type}-${pick.item.id}`}>
+            <div className="recommendation-item smart-pick-card" key={`${pick.type}-${pick.item.id}-${pick.productName}`}>
               <div className="smart-pick-badge-line">
                 <span className="smart-pick-type">{pick.type}</span>
                 <span className="smart-pick-badge">{pick.badge}</span>

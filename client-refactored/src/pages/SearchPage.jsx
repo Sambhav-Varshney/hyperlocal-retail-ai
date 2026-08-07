@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import SearchFilters from "../components/forms/SearchFilters";
@@ -8,10 +8,11 @@ import RecommendationPanel from "../components/ui/RecommendationPanel";
 import EmptyState from "../components/common/EmptyState";
 
 function SearchPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     search,
     setSearch,
+    setCommittedSearch,
     handleSearch,
     selectedCategory,
     setSelectedCategory,
@@ -24,6 +25,8 @@ function SearchPage() {
     location,
     loading,
     filteredStores,
+    isFallbackSearch,
+    didYouMeanSuggestions,
     bestPrice,
     savedStores,
     toggleSavedStore,
@@ -36,21 +39,32 @@ function SearchPage() {
     resetFilters,
   } = useData();
 
-  // SINGLE SOURCE OF TRUTH DATASET
   const visibleProducts = filteredStores;
+  const initializedQueryRef = useRef(null);
 
+  // Sync with URL params ONCE per distinct URL parameter change
   useEffect(() => {
     const categoryParam = searchParams.get("category");
     const queryParam = searchParams.get("q") || searchParams.get("keyword");
 
-    if (queryParam) handleSearch(queryParam);
+    if (queryParam !== null && queryParam !== undefined && queryParam !== initializedQueryRef.current) {
+      initializedQueryRef.current = queryParam;
+      setSearch(queryParam);
+      setCommittedSearch(queryParam);
+    }
     if (categoryParam) {
       const matchedCategory = categories.find(
         (category) => category.slug === categoryParam || category.categoryName.toLowerCase() === categoryParam.toLowerCase()
       );
       setSelectedCategory(matchedCategory?.slug || matchedCategory?.id || categoryParam);
     }
-  }, [searchParams, categories, handleSearch, setSelectedCategory]);
+  }, [searchParams, categories, setSearch, setCommittedSearch, setSelectedCategory]);
+
+  const onSearchSubmit = (explicitQuery) => {
+    const term = explicitQuery !== undefined ? explicitQuery : search;
+    handleSearch(term);
+    setSearchParams(term ? { keyword: term } : {});
+  };
 
   const savedIds = new Set(savedStores.map((store) => store.id));
 
@@ -60,6 +74,7 @@ function SearchPage() {
         <SearchFilters
           search={search}
           setSearch={setSearch}
+          setCommittedSearch={setCommittedSearch}
           selectedCategory={selectedCategory}
           setSelectedCategory={setSelectedCategory}
           budget={budget}
@@ -67,18 +82,58 @@ function SearchPage() {
           sortBy={sortBy}
           setSortBy={setSortBy}
           categories={categories}
-          onSearch={() => handleSearch()}
+          onSearch={onSearchSubmit}
           onUseLocation={handleUseLocation}
           location={location}
           loading={loading}
         />
+
+        {/* Fallback Banner & "Did You Mean?" Suggestions */}
+        {isFallbackSearch && search ? (
+          <div className="search-fallback-banner panel" style={{ marginBottom: "20px", padding: "18px 22px" }}>
+            <div className="fallback-banner-header" style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              <span className="fallback-icon" style={{ fontSize: "1.6rem" }}>💡</span>
+              <div>
+                <h3 style={{ margin: "0 0 4px", fontSize: "1.1rem", color: "var(--text-main)" }}>
+                  Couldn't find an exact match for "{search}".
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-muted)" }}>
+                  Showing related products and top deals nearby instead.
+                </p>
+              </div>
+            </div>
+
+            {didYouMeanSuggestions && didYouMeanSuggestions.length > 0 ? (
+              <div className="did-you-mean-row" style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <span className="did-you-mean-label" style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--accent)" }}>
+                  Did you mean?
+                </span>
+                <div className="did-you-mean-tags" style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {didYouMeanSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className="pill-btn active"
+                      style={{ padding: "4px 12px", fontSize: "0.82rem", cursor: "pointer" }}
+                      onClick={() => onSearchSubmit(suggestion)}
+                    >
+                      ✨ {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="panel search-results-panel">
           <div className="results-header">
             <div>
               <p className="eyebrow">Results</p>
               <h2>
-                {visibleProducts.length
+                {isFallbackSearch
+                  ? `Recommended Products (${visibleProducts.length})`
+                  : visibleProducts.length
                   ? `${visibleProducts.length} ${visibleProducts.length === 1 ? "result" : "results"} found`
                   : "No results found"}
               </h2>
@@ -125,8 +180,8 @@ function SearchPage() {
                 />
               ))
             ) : (
-              <EmptyState title="No products found" onClearFilters={resetFilters}>
-                No products found matching your active search query or filters.
+              <EmptyState title="Couldn't find an exact match" onClearFilters={resetFilters}>
+                Try adjusting your filters or search keywords above.
               </EmptyState>
             )}
           </div>

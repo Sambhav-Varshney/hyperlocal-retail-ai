@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import api from "../services/api";
 import { getBudgetType, safeJSONParse } from "../utils/format";
 import { calculateDistance, DEFAULT_MARKET_LOCATION } from "../utils/distanceUtils";
@@ -22,6 +22,56 @@ function parseSearchKeywords(rawTerm) {
   const words = rawTerm.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean);
   const coreKeywords = words.filter((w) => !STOP_WORDS.has(w));
   return coreKeywords.length > 0 ? coreKeywords : words;
+}
+
+const COMMON_SUGGESTION_MAP = {
+  coffee: ["Coffee", "Nescafe Coffee", "Bru Coffee"],
+  cofee: ["Coffee", "Nescafe Coffee", "Bru Coffee"],
+  milk: ["Amul Gold Milk", "Mother Dairy Milk", "Amul Butter"],
+  milkk: ["Amul Gold Milk", "Mother Dairy Milk", "Amul Butter"],
+  tea: ["Red Label Tea", "Tata Tea Gold"],
+  atta: ["Aashirvaad Atta", "India Gate Rice"],
+  toothpaste: ["Colgate Toothpaste", "Closeup Toothpaste"],
+  toothpste: ["Colgate Toothpaste", "Closeup Toothpaste"],
+  chips: ["Lay's Potato Chips", "Kurkure Masala Munch", "Bingo Mad Angles"],
+  shampoo: ["Clinic Plus Shampoo", "Head & Shoulders"],
+  shampoe: ["Clinic Plus Shampoo", "Head & Shoulders"],
+  biscuit: ["Parle-G Biscuits", "Britannia Good Day"],
+  biscuits: ["Parle-G Biscuits", "Britannia Good Day"],
+  soap: ["Lux Rose Soap", "Dove Beauty Soap", "Lifebuoy Soap"],
+  soapp: ["Lux Rose Soap", "Dove Beauty Soap", "Lifebuoy Soap"],
+  maggi: ["Maggi 2-Minute Noodles", "Yippee Masala Noodles"],
+  coldrink: ["Coca-Cola", "Pepsi", "Sprite"],
+  juice: ["Real Mixed Fruit Juice"],
+  oil: ["Fortune Sunflower Oil"],
+  detergent: ["Surf Excel Detergent", "Ariel Detergent"],
+};
+
+function getDidYouMeanSuggestions(rawTerm, allStores) {
+  if (!rawTerm) return [];
+  const lower = rawTerm.toLowerCase().trim();
+
+  for (const [key, suggestions] of Object.entries(COMMON_SUGGESTION_MAP)) {
+    if (lower.includes(key) || key.includes(lower)) {
+      return suggestions;
+    }
+  }
+
+  const uniqueNames = Array.from(
+    new Set(allStores.map((s) => s.productName).filter(Boolean))
+  );
+
+  const keywords = lower.split(/\s+/).filter((w) => w.length >= 2);
+  if (!keywords.length) return uniqueNames.slice(0, 4);
+
+  const matched = uniqueNames.filter((name) => {
+    const n = name.toLowerCase();
+    return keywords.some((kw) => n.includes(kw) || kw.includes(n));
+  });
+
+  return matched.length > 0
+    ? matched.slice(0, 4)
+    : ["Amul Gold Milk 1L", "Maggi 2-Minute Masala Noodles 280g", "Nescafe Classic Instant Coffee 50g", "Lay's Classic Salted Potato Chips 50g"];
 }
 
 const getOfferState = (store) => {
@@ -94,9 +144,12 @@ export function DataProvider({ children }) {
       setCategories([
         { id: 1, categoryName: "Groceries", slug: "groceries" },
         { id: 2, categoryName: "Dairy", slug: "dairy" },
-        { id: 3, categoryName: "Snacks", slug: "snacks" },
-        { id: 4, categoryName: "Beverages", slug: "beverages" },
+        { id: 3, categoryName: "Beverages", slug: "beverages" },
+        { id: 4, categoryName: "Snacks", slug: "snacks" },
         { id: 5, categoryName: "Personal Care", slug: "personal-care" },
+        { id: 6, categoryName: "Cleaning", slug: "cleaning" },
+        { id: 7, categoryName: "Bakery", slug: "bakery" },
+        { id: 8, categoryName: "Spices", slug: "spices" },
       ]);
     }
 
@@ -140,7 +193,8 @@ export function DataProvider({ children }) {
     localStorage.setItem("recentViews", JSON.stringify(recentViews));
   }, [recentViews]);
 
-  const filteredStores = useMemo(() => {
+  // Compute search state, fallbacks, and suggestions
+  const { filteredStores, isFallbackSearch, didYouMeanSuggestions } = useMemo(() => {
     const normalizedSelectedCategory = normalizeFilterValue(selectedCategory);
     const selectedCategoryData = categories.find((category) =>
       [category.id, category.slug, category.categoryName].some(
@@ -165,7 +219,8 @@ export function DataProvider({ children }) {
 
     const term = committedSearch.trim().toLowerCase();
 
-    const matched = withDistance
+    // 1. Base Filter (Category, Budget, Rating, OpenNow, Offers)
+    const baseFiltered = withDistance
       .filter((store) => {
         if (!normalizedSelectedCategory || normalizedSelectedCategory === "all") return true;
 
@@ -203,30 +258,63 @@ export function DataProvider({ children }) {
         return Number.isNaN(rating) ? true : rating >= minRating;
       })
       .filter((store) => !showOpenNow || isStoreOpen(store) !== false)
-      .filter((store) => !showOffers || store.hasOffer !== false)
-      .filter((store) => {
-        if (!term) return true;
+      .filter((store) => !showOffers || store.hasOffer !== false);
 
-        const pName = normalizeFilterValue(store.productName);
-        const bName = normalizeFilterValue(store.brand);
-        const cName = normalizeFilterValue(store.category);
-        const sName = normalizeFilterValue(store.storeName);
-        const fullText = `${pName} ${bName} ${cName} ${sName}`;
+    if (!term) {
+      const sorted = baseFiltered.slice().sort((a, b) => {
+        if (sortBy === "Lowest Price" || sortBy === "Price Low") return Number(a.price ?? Infinity) - Number(b.price ?? Infinity);
+        if (sortBy === "Highest Price") return Number(b.price ?? -Infinity) - Number(a.price ?? -Infinity);
+        if (sortBy === "Highest Rating" || sortBy === "Rating High") return Number(b.rating ?? -Infinity) - Number(a.rating ?? -Infinity);
+        if (sortBy === "Nearest Store" || sortBy === "Nearby") return (a.distance ?? 99999) - (b.distance ?? 99999);
+        return 0;
+      });
+      return { filteredStores: sorted, isFallbackSearch: false, didYouMeanSuggestions: [] };
+    }
 
-        // 1. Direct match
-        if (fullText.includes(term)) return true;
+    // 2. Exact / Core Keyword Matching
+    const exactMatched = baseFiltered.filter((store) => {
+      const pName = normalizeFilterValue(store.productName);
+      const bName = normalizeFilterValue(store.brand);
+      const cName = normalizeFilterValue(store.category);
+      const sName = normalizeFilterValue(store.storeName);
+      const fullText = `${pName} ${bName} ${cName} ${sName}`;
 
-        // 2. Natural language keyword extraction
-        const keywords = parseSearchKeywords(term);
-        if (!keywords.length) return true;
+      if (fullText.includes(term)) return true;
 
-        return keywords.some((kw) => fullText.includes(kw));
-      })
-      .map((store) => {
-        if (!term) {
-          return { ...store, matchReason: null };
-        }
+      const keywords = parseSearchKeywords(term);
+      if (!keywords.length) return true;
 
+      return keywords.some((kw) => fullText.includes(kw));
+    });
+
+function calculateRelevanceScore(store, term) {
+  if (!term) return 0;
+  const pName = store.productName?.toLowerCase() || "";
+  const category = store.category?.toLowerCase() || "";
+
+  let score = 0;
+
+  if (term === "milk" && category === "dairy") score += 100;
+  if (term === "coffee" && category === "beverages") score += 100;
+  if (term === "tea" && category === "beverages") score += 100;
+  if (term === "soap" && category === "personal care") score += 100;
+  if (term === "shampoo" && category === "personal care") score += 100;
+  if (term === "atta" && category === "groceries") score += 100;
+  if (term === "rice" && category === "groceries") score += 100;
+
+  const wordRegex = new RegExp(`\\b${term}\\b`, "i");
+  if (wordRegex.test(pName)) {
+    score += 50;
+    if (!pName.includes("chocolate") && !pName.includes("biscuit")) {
+      score += 50;
+    }
+  }
+
+  return score;
+}
+
+    if (exactMatched.length > 0) {
+      const sorted = exactMatched.map((store) => {
         const p = store.productName?.toLowerCase() || "";
         const c = store.category?.toLowerCase() || "";
         const s = store.storeName?.toLowerCase() || "";
@@ -236,16 +324,33 @@ export function DataProvider({ children }) {
         if (s.includes(term)) return { ...store, matchReason: "Matched Store" };
 
         return { ...store, matchReason: "Partial Match" };
-      })
-      .sort((a, b) => {
+      }).sort((a, b) => {
         if (sortBy === "Lowest Price" || sortBy === "Price Low") return Number(a.price ?? Infinity) - Number(b.price ?? Infinity);
         if (sortBy === "Highest Price") return Number(b.price ?? -Infinity) - Number(a.price ?? -Infinity);
         if (sortBy === "Highest Rating" || sortBy === "Rating High") return Number(b.rating ?? -Infinity) - Number(a.rating ?? -Infinity);
         if (sortBy === "Nearest Store" || sortBy === "Nearby") return (a.distance ?? 99999) - (b.distance ?? 99999);
-        return 0;
+
+        const scoreDiff = calculateRelevanceScore(b, term) - calculateRelevanceScore(a, term);
+        if (scoreDiff !== 0) return scoreDiff;
+
+        return Number(a.price ?? Infinity) - Number(b.price ?? Infinity);
       });
 
-    return matched;
+      return { filteredStores: sorted, isFallbackSearch: false, didYouMeanSuggestions: [] };
+    }
+
+    // 3. Fallback Search — zero exact matches found
+    const suggestions = getDidYouMeanSuggestions(term, stores);
+    const fallbackResults = baseFiltered.slice(0, 8).map((store) => ({
+      ...store,
+      matchReason: "Related Recommendation",
+    }));
+
+    return {
+      filteredStores: fallbackResults,
+      isFallbackSearch: true,
+      didYouMeanSuggestions: suggestions,
+    };
   }, [
     stores,
     categories,
@@ -263,9 +368,14 @@ export function DataProvider({ children }) {
     ? Math.min(...filteredStores.map((store) => Number(store.price || 0)))
     : null;
 
+  const searchRef = useRef(search);
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+
   const handleSearch = useCallback(
     async (explicitQuery) => {
-      const term = (explicitQuery !== undefined ? explicitQuery : search).trim();
+      const term = (explicitQuery !== undefined ? explicitQuery : searchRef.current).trim();
       setSearch(term);
       setCommittedSearch(term);
 
@@ -307,7 +417,7 @@ export function DataProvider({ children }) {
         setLoading(false);
       }
     },
-    [search, user, location]
+    [user, location]
   );
 
   const handleUseLocation = useCallback(() => {
@@ -487,6 +597,7 @@ export function DataProvider({ children }) {
     search,
     setSearch,
     committedSearch,
+    setCommittedSearch,
     searchType,
     setSearchType,
     selectedCategory,
@@ -503,6 +614,8 @@ export function DataProvider({ children }) {
     setMinRating,
     location,
     filteredStores,
+    isFallbackSearch,
+    didYouMeanSuggestions,
     bestPrice,
     handleSearch,
     handleUseLocation,
