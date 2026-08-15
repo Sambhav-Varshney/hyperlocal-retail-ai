@@ -107,6 +107,7 @@ export function DataProvider({ children }) {
   const [showOffers, setShowOffers] = useState(false);
   const [minRating, setMinRating] = useState(0);
   const [location, setLocation] = useState(null);
+  const [locationDenied, setLocationDenied] = useState(false);
 
   const [compareStores, setCompareStores] = useState(
     () => safeJSONParse(localStorage.getItem("compareStores")) || []
@@ -422,20 +423,25 @@ function calculateRelevanceScore(store, term) {
 
   const handleUseLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      showToast("Geolocation is not supported in this browser", "error");
+      setLocationDenied(true);
+      showToast("Location access is unavailable. Showing available stores instead.", "error");
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        setLocationDenied(false);
         setLocation({
           lat: position.coords.latitude,
           lon: position.coords.longitude,
         });
-        setSortBy("Nearby");
+        setSortBy("Nearest Store");
         showToast("Location enabled");
       },
-      () => showToast("Location permission was not granted", "error")
+      () => {
+        setLocationDenied(true);
+        showToast("Location access is unavailable. Showing available stores instead.", "error");
+      }
     );
   }, [showToast]);
 
@@ -613,6 +619,8 @@ function calculateRelevanceScore(store, term) {
     minRating,
     setMinRating,
     location,
+    locationDenied,
+    setLocationDenied,
     filteredStores,
     isFallbackSearch,
     didYouMeanSuggestions,

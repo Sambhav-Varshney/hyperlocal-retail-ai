@@ -8,9 +8,14 @@ import { formatDistance } from "../utils/distanceUtils";
 function ProfilePage() {
   const { user, logout } = useAuth();
   const { openAuthModal } = useUI();
-  const { savedStores, compareItems, recentSearches, handleSearch, removeSavedStore } = useData();
+  const { savedStores, compareItems, recentSearches, handleSearch, removeSavedStore, stores } = useData();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("info"); // 'info' | 'history' | 'saved' | 'settings'
+
+  const userRole = user?.role || "customer";
+  const myStore = stores.find(
+    (s) => String(s.ownerId || s.owner_id) === String(user?.id) || s.ownerName?.toLowerCase().includes(user?.name?.toLowerCase())
+  ) || stores[0];
 
   const handleLogout = () => {
     if (logout()) navigate("/");
@@ -35,6 +40,13 @@ function ProfilePage() {
     openAuthModal("/login", message);
   };
 
+  const getRoleBadgeLabel = () => {
+    if (!user) return "Guest Mode";
+    if (userRole === "admin") return "Administrator";
+    if (userRole === "shop_owner") return "Shop Owner";
+    return "Customer";
+  };
+
   return (
     <div className="content-grid single-column-layout profile-page-layout">
       <div className="results-column">
@@ -46,7 +58,7 @@ function ProfilePage() {
               <div className="profile-name-row">
                 <h1>{user?.name || "Guest Shopper"}</h1>
                 <span className="profile-badge blue-verified-badge">
-                  {user ? (user.role === "admin" ? "Admin Account" : "Verified Shopper") : "Guest Access"}
+                  {getRoleBadgeLabel()}
                 </span>
               </div>
               <p className="profile-email">✉️ {user?.email || "guest@bazaarhub.com"}</p>
@@ -155,13 +167,32 @@ function ProfilePage() {
                     <div>{user?.email || "guest@bazaarhub.com"}</div>
                   </div>
                   <div className="info-field">
-                    <label>Account Type</label>
-                    <div>{user ? (user.role === "admin" ? "Administrator" : "Standard Shopper") : "Guest Mode"}</div>
+                    <label>Account Role</label>
+                    <div style={{ fontWeight: 750, color: userRole === "admin" ? "#A78BFA" : userRole === "shop_owner" ? "var(--primary)" : "var(--text-main)" }}>
+                      {getRoleBadgeLabel()}
+                    </div>
                   </div>
-                  <div className="info-field">
-                    <label>Default Market Location</label>
-                    <div>Connaught Place, New Delhi (28.6139, 77.2090)</div>
-                  </div>
+
+                  {userRole === "admin" ? (
+                    <div className="info-field">
+                      <label>Access Level</label>
+                      <div style={{ color: "#A78BFA", fontWeight: 750 }}>
+                        🛡️ Full Platform Access
+                      </div>
+                    </div>
+                  ) : userRole === "shop_owner" ? (
+                    <div className="info-field">
+                      <label>My Store</label>
+                      <div style={{ color: "var(--primary)", fontWeight: 750 }}>
+                        🏪 {myStore?.storeName || "D-Mart"} ({myStore?.marketArea || myStore?.city || "Nearby"})
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="info-field">
+                      <label>Default Market Location</label>
+                      <div>Connaught Place, New Delhi (28.6139, 77.2090)</div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : null}

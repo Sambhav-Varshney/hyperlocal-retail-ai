@@ -28,13 +28,14 @@ beforeEach(() => {
   api.createSearchLog.mockResolvedValue({});
   api.getStoreById.mockResolvedValue(null);
   api.login.mockResolvedValue({
-    user: { id: 1, name: "Test User", email: "test@example.com" },
+    user: { id: 1, name: "Test User", email: "test@example.com", role: "customer" },
     token: "fake-token",
   });
   api.register.mockResolvedValue({
     id: 2,
     name: "New User",
     email: "new@example.com",
+    role: "customer",
   });
 
   // Clear persisted auth between tests
@@ -83,5 +84,44 @@ test("search page renders without crashing", async () => {
   renderAt("/search");
   await waitFor(() => {
     expect(screen.getByPlaceholderText("Search stores, products, brands or areas...")).toBeInTheDocument();
+  });
+});
+
+test("blocks customer role from /admin/dashboard and displays Access Restricted", async () => {
+  localStorage.setItem(
+    "authUser",
+    JSON.stringify({ id: 1, name: "Customer User", email: "customer@bazaarhub.com", role: "customer" })
+  );
+  localStorage.setItem("authToken", "fake-token");
+
+  renderAt("/admin/dashboard");
+  await waitFor(() => {
+    expect(screen.getByText("Access Restricted")).toBeInTheDocument();
+  });
+});
+
+test("allows admin role to view /admin/dashboard", async () => {
+  localStorage.setItem(
+    "authUser",
+    JSON.stringify({ id: 3, name: "Admin User", email: "admin@bazaarhub.com", role: "admin" })
+  );
+  localStorage.setItem("authToken", "fake-token");
+
+  renderAt("/admin/dashboard");
+  await waitFor(() => {
+    expect(screen.getByRole("heading", { name: "Admin Dashboard" })).toBeInTheDocument();
+  });
+});
+
+test("allows shop_owner role to view /shop/dashboard", async () => {
+  localStorage.setItem(
+    "authUser",
+    JSON.stringify({ id: 2, name: "D-Mart Owner", email: "shopowner@bazaarhub.com", role: "shop_owner" })
+  );
+  localStorage.setItem("authToken", "fake-token");
+
+  renderAt("/shop/dashboard");
+  await waitFor(() => {
+    expect(screen.getByText("Shop Owner Menu")).toBeInTheDocument();
   });
 });

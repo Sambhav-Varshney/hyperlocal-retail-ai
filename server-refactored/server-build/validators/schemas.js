@@ -8,7 +8,7 @@ const registerSchema = Joi.object({
   name: Joi.string().trim().min(2).max(100).required(),
   email: Joi.string().email().lowercase().required(),
   password: Joi.string().min(6).max(128).required(),
-  role: Joi.string().valid("user", "admin").default("user"),
+  role: Joi.string().valid("customer", "shop_owner", "admin").default("customer"),
   phone: Joi.string().max(30).allow("", null).optional(),
   address: Joi.string().max(500).allow("", null).optional(),
 });

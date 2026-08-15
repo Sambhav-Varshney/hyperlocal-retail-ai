@@ -28,7 +28,7 @@ async function emailExists(email) {
 async function insert({ name, email, hashedPassword, role, phone, address }) {
   const [result] = await pool.query(
     `INSERT INTO users (name, email, password, role, phone, address) VALUES (?, ?, ?, ?, ?, ?)`,
-    [name, email, hashedPassword, role || "user", phone || null, address || null]
+    [name, email, hashedPassword, role || "customer", phone || null, address || null]
   );
   return result.insertId;
 }

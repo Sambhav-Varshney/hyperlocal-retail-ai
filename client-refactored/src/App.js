@@ -10,11 +10,11 @@ import PageLayout from "./components/layout/PageLayout";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 
 import HomePage from "./pages/HomePage";
-import DashboardPage from "./pages/DashboardPage";
 import SearchPage from "./pages/SearchPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import SavedPage from "./pages/SavedPage";
 import ProfilePage from "./pages/ProfilePage";
+import ShopDashboardPage from "./pages/ShopDashboardPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AuthPageShell from "./pages/AuthPageShell";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -44,6 +44,14 @@ function HomeRoute() {
   return <HomePage />;
 }
 
+// Legacy /dashboard compatibility redirect based on role
+function DashboardRedirect() {
+  const { user } = useAuth();
+  if (user?.role === "admin") return <Navigate to="/admin/dashboard" replace />;
+  if (user?.role === "shop_owner") return <Navigate to="/shop/dashboard" replace />;
+  return <Navigate to="/" replace />;
+}
+
 function AppRoutes() {
   return (
     <PageLayout>
@@ -61,28 +69,31 @@ function AppRoutes() {
         <Route path="/login" element={<AuthPageShell />} />
         <Route path="/register" element={<AuthPageShell />} />
 
-        {/* Protected routes — require authenticated user session */}
+        {/* Protected RBAC routes */}
         <Route
-          path="/dashboard"
+          path="/shop/dashboard"
           element={
-            <ProtectedRoute>
-              <DashboardPage />
+            <ProtectedRoute allowedRoles={["shop_owner"]}>
+              <ShopDashboardPage />
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardRedirect />} />
+        
         <Route
           path="/compare"
           element={
             <ProtectedRoute>
               <ComparePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminDashboardPage />
             </ProtectedRoute>
           }
         />

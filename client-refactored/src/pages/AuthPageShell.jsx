@@ -9,26 +9,46 @@ function AuthPageShell() {
   const { user, login, register, authLoading, continueAsGuest } = useAuth();
   const [mode, setMode] = useState(location.pathname === "/register" ? "register" : "login");
 
-  // Already logged in — redirect to Home page
+  const getRedirectPath = (userRole) => {
+    if (userRole === "admin") return "/admin/dashboard";
+    if (userRole === "shop_owner") return "/shop/dashboard";
+    return "/";
+  };
+
+  // Already logged in — redirect to role-specific route
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getRedirectPath(user.role)} replace />;
   }
 
   const handleLogin = async (payload) => {
     const result = await login(payload);
-    if (result.success) navigate("/");
+    if (result.success) {
+      const savedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+      const targetRole = savedUser?.role || "customer";
+      navigate(getRedirectPath(targetRole));
+    }
     return result;
   };
 
   const handleRegister = async (payload) => {
     const result = await register(payload);
-    if (result.success) navigate("/");
+    if (result.success) {
+      navigate("/");
+    }
     return result;
   };
 
   const handleGuestAccess = () => {
     continueAsGuest();
     navigate("/");
+  };
+
+  const handleDemoLogin = async (demoRole) => {
+    let email = "customer@bazaarhub.com";
+    if (demoRole === "shop_owner") email = "shopowner@bazaarhub.com";
+    if (demoRole === "admin") email = "admin@bazaarhub.com";
+
+    await handleLogin({ email, password: "password123" });
   };
 
   return (
@@ -55,6 +75,39 @@ function AuthPageShell() {
             <div className="auth-feature-item">
               <span className="feature-icon" aria-hidden="true">📍</span>
               <span>Nearby Store Discovery</span>
+            </div>
+          </div>
+
+          {/* Quick Demo Login Pills for Testing Roles */}
+          <div style={{ marginTop: "28px", padding: "18px", borderRadius: "16px", background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <span style={{ display: "block", fontSize: "0.8rem", fontWeight: 750, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "10px" }}>
+              🔑 Quick Demo Login by Role
+            </span>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="ghost-action"
+                style={{ padding: "6px 12px", fontSize: "0.82rem", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--text-main)" }}
+                onClick={() => handleDemoLogin("customer")}
+              >
+                👤 Customer
+              </button>
+              <button
+                type="button"
+                className="ghost-action"
+                style={{ padding: "6px 12px", fontSize: "0.82rem", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--primary)" }}
+                onClick={() => handleDemoLogin("shop_owner")}
+              >
+                🏪 Shop Owner
+              </button>
+              <button
+                type="button"
+                className="ghost-action"
+                style={{ padding: "6px 12px", fontSize: "0.82rem", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "8px", color: "#A78BFA" }}
+                onClick={() => handleDemoLogin("admin")}
+              >
+                🛡️ Admin
+              </button>
             </div>
           </div>
         </div>
@@ -102,19 +155,6 @@ function AuthPageShell() {
           >
             Continue as Guest ➔
           </button>
-
-          <div className="auth-divider">
-            <span>or continue with</span>
-          </div>
-
-          <div className="social-auth-grid">
-            <button type="button" className="social-auth-btn" onClick={() => alert("Google Login Demo")}>
-              <span>🌐</span> Google
-            </button>
-            <button type="button" className="social-auth-btn" onClick={() => alert("GitHub Login Demo")}>
-              <span>🐙</span> GitHub
-            </button>
-          </div>
         </div>
       </div>
     </section>

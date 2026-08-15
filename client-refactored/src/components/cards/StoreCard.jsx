@@ -4,7 +4,7 @@ import { imageForCategory } from "../../assets/homeImages";
 import HomeImage from "../common/HomeImage";
 import { useData } from "../../context/DataContext";
 
-function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, showCompare = true }) {
+function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, showCompare = true, onFocusOnMap }) {
   const navigate = useNavigate();
   const { isCompared, addToCompare } = useData();
   const itemId = store.productId ?? store.id;
@@ -78,10 +78,13 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, s
         ) : null}
         {store.latitude && store.longitude ? (
           <a
-            href={`https://www.google.com/maps?q=${store.latitude},${store.longitude}`}
+            href={`https://www.google.com/maps/search/?api=1&query=${store.latitude},${store.longitude}`}
             target="_blank"
             rel="noreferrer"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (onFocusOnMap) onFocusOnMap(store.id);
+            }}
           >
             Map
           </a>

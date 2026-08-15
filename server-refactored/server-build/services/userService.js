@@ -37,14 +37,16 @@ async function getUserById(id) {
   return user;
 }
 
-async function register({ name, email, password, role, phone, address }) {
+async function register({ name, email, password, phone, address }) {
   const exists = await userModel.emailExists(email);
   if (exists) throw new AppError("An account with that email already exists.", 409);
 
+  // Always force customer role for public registration
+  const role = "customer";
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
   const id = await userModel.insert({ name, email, hashedPassword, role, phone, address });
 
-  const user = { id, name, email, role: role || "user", phone: phone || null, address: address || null };
+  const user = { id, name, email, role, phone: phone || null, address: address || null };
   const token = signToken(user);
 
   return { user, token };

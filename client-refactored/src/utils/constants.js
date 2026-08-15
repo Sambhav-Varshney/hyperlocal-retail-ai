@@ -3,18 +3,31 @@ export const SORT_OPTIONS = ["Best Match", "Lowest Price", "Highest Price", "Hig
 export const SEARCH_TYPES = ["All", "Products", "Stores", "Categories"];
 export const RATING_OPTIONS = [0, 3, 4, 4.5, 5];
 
-// Central nav definition used by the Navbar. `auth` controls visibility:
-// "public"  -> always visible
-// "guest"   -> only visible when logged out
-// "user"    -> only visible when logged in
-// "admin"   -> only visible for admin users
-export const NAV_ITEMS = [
-  { label: "Home", path: "/", auth: "public" },
-  { label: "Search", path: "/search", auth: "public" },
-  { label: "Categories", path: "/categories", auth: "public" },
-  { label: "Saved", path: "/saved", auth: "public" },
-  { label: "Profile", path: "/profile", auth: "public" },
-  { label: "Dashboard", path: "/dashboard", auth: "user" },
-  { label: "Admin", path: "/admin", auth: "admin" },
-  { label: "Login", path: "/login", auth: "guest" },
+export const CUSTOMER_NAV_ITEMS = [
+  { label: "Home", path: "/" },
+  { label: "Search", path: "/search" },
+  { label: "Categories", path: "/categories" },
+  { label: "Saved", path: "/saved" },
+  { label: "Profile", path: "/profile" },
+];
+
+export const SHOP_OWNER_NAV_ITEMS = [
+  { label: "Dashboard", path: "/shop/dashboard" },
+  { label: "Products", path: "/shop/dashboard?tab=products" },
+  { label: "Inventory", path: "/shop/dashboard?tab=inventory" },
+  { label: "Analytics", path: "/shop/dashboard?tab=analytics" },
+  { label: "Store Settings", path: "/shop/dashboard?tab=settings" },
+  { label: "Profile", path: "/profile" },
+];
+
+export const ADMIN_NAV_ITEMS = [
+  { label: "Dashboard", path: "/admin/dashboard" },
+  { label: "Users", path: "/admin/dashboard?tab=users" },
+  { label: "Stores", path: "/admin/dashboard?tab=stores" },
+  { label: "Products", path: "/admin/dashboard?tab=products" },
+  { label: "Categories", path: "/admin/dashboard?tab=categories" },
+  { label: "Analytics", path: "/admin/dashboard?tab=analytics" },
+  { label: "Reports", path: "/admin/dashboard?tab=reports" },
+  { label: "Settings", path: "/admin/dashboard?tab=settings" },
+  { label: "Profile", path: "/profile" },
 ];

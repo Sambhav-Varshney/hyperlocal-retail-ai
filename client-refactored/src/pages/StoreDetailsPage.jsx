@@ -193,6 +193,11 @@ function StoreDetailsPage() {
             <span className="pill badge-rating">⭐ {rating} ({totalReviews} reviews)</span>
             <span className="pill badge-budget">{budgetCategory}</span>
             <span className="pill badge-city">📍 {storeInfo.city || "Local Market"}</span>
+            {storeInfo.distance ? (
+              <span className="pill badge-distance" style={{ fontWeight: 700, color: "var(--accent)" }}>
+                🚗 {storeInfo.distance.toFixed(1)} km away
+              </span>
+            ) : null}
           </div>
 
           <div className="store-address-row">
@@ -207,7 +212,7 @@ function StoreDetailsPage() {
               rel="noreferrer"
               className="primary-action store-maps-btn"
             >
-              🗺️ Open in Google Maps
+              🗺️ Get Directions ↗
             </a>
             <Link className="ghost-action" to="/search">
               ← Back to Search

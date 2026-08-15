@@ -1,20 +1,27 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import { NAV_ITEMS } from "../../utils/constants";
+import { CUSTOMER_NAV_ITEMS, SHOP_OWNER_NAV_ITEMS, ADMIN_NAV_ITEMS } from "../../utils/constants";
 
 function Navbar() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const visibleItems = NAV_ITEMS.filter((item) => {
-    if (item.auth === "public") return true;
-    if (item.auth === "guest") return !user;
-    if (item.auth === "user") return Boolean(user);
-    if (item.auth === "admin") return isAdmin;
-    return false;
-  });
+  const userRole = user?.role || "customer";
+
+  // Select dedicated portal navigation list based on user role
+  let navItems = CUSTOMER_NAV_ITEMS;
+  let portalTitle = "Hyperlocal retail intelligence";
+
+  if (userRole === "admin") {
+    navItems = ADMIN_NAV_ITEMS;
+    portalTitle = "Admin Management Portal";
+  } else if (userRole === "shop_owner") {
+    navItems = SHOP_OWNER_NAV_ITEMS;
+    portalTitle = "Shop Owner Portal";
+  }
 
   const handleLogout = () => {
     if (logout()) navigate("/");
@@ -30,29 +37,48 @@ function Navbar() {
       .slice(0, 2);
   };
 
+  // Determine active item for sub-query tabs (e.g. /shop/dashboard?tab=products)
+  const isItemActive = (itemPath) => {
+    const currentFull = `${location.pathname}${location.search}`;
+    if (itemPath.includes("?")) {
+      return currentFull === itemPath;
+    }
+    return location.pathname === itemPath && !location.search;
+  };
+
   return (
     <header className="topbar sticky-navbar">
       {/* Brand Logo */}
-      <NavLink to="/" className="brand-block">
+      <NavLink to={userRole === "admin" ? "/admin/dashboard" : userRole === "shop_owner" ? "/shop/dashboard" : "/"} className="brand-block">
         <div className="brand-mark">BH</div>
         <div>
           <strong>BazaarHub</strong>
-          <span>Hyperlocal retail intelligence</span>
+          <span style={{ fontSize: "0.72rem", color: userRole !== "customer" ? "var(--primary)" : "var(--text-muted)", fontWeight: userRole !== "customer" ? 650 : 400 }}>
+            {portalTitle}
+          </span>
         </div>
       </NavLink>
 
-      {/* Central Navigation Items */}
+      {/* Role-Specific Portal Navigation Items */}
       <nav className="nav-tabs" aria-label="Primary navigation">
-        {visibleItems.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
-            end={item.path === "/"}
-            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+            className={() => (isItemActive(item.path) ? "nav-link active" : "nav-link")}
           >
             {item.label}
           </NavLink>
         ))}
+
+        {!user ? (
+          <NavLink
+            to="/login"
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          >
+            Login
+          </NavLink>
+        ) : null}
       </nav>
 
       {/* Right Controls: Animated Theme Slider Toggle & User Avatar */}
