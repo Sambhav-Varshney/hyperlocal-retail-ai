@@ -4,6 +4,7 @@ import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import StoreCard from "../components/cards/StoreCard";
 import EmptyState from "../components/common/EmptyState";
+import AIShoppingAgent from "../components/ui/AIShoppingAgent";
 
 const categoryIcons = {
   beverages: "🥤",
@@ -23,7 +24,7 @@ const getGreeting = () => {
 function HomePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { categories, stores, savedStores, toggleSavedStore, bestPrice, loading, search, handleSearch } = useData();
+  const { categories, stores, savedStores, toggleSavedStore, loading, search, handleSearch } = useData();
   const [homeSearch, setHomeSearch] = useState(search);
   const savedIds = new Set(savedStores.map((store) => store.id));
   const featuredStores = stores.slice().sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0)).slice(0, 4);
@@ -61,7 +62,7 @@ function HomePage() {
           <div className="welcome-header">
             <h1 className="welcome-greeting">{greetingText}</h1>
             <p className="welcome-subtitle">
-              Discover nearby stores, compare prices, and shop smarter with AI.
+              Find nearby stores, compare prices, and shop smarter with AI.
             </p>
           </div>
 
@@ -96,6 +97,9 @@ function HomePage() {
           </div>
         </section>
 
+        {/* Stage 7: AI Shopping Agent Panel */}
+        <AIShoppingAgent />
+
         {/* Minimal Dark SaaS Hero Section (Linear / Vercel Style) */}
         <section className="home-hero minimal-hero polished-hero">
           <div className="hero-grid-overlay" aria-hidden="true" />
@@ -109,140 +113,103 @@ function HomePage() {
             <span className="hero-badge">🔍 Smart Search</span>
           </div>
 
-          {/* Hero Copy */}
-          <div className="hero-text-content">
-            <h1 className="hero-main-heading">
-              Find nearby stores, compare prices, and shop smarter with AI.
-            </h1>
-            <p className="hero-main-subtitle">
-              Discover local products, compare prices across nearby stores, and make better shopping decisions.
-            </p>
+          <h2 className="hero-title font-heading">
+            Find the Best Local Deals <span className="text-gradient blue-gradient">Near You</span>
+          </h2>
+          <p className="hero-subtitle">
+            Compare prices across neighborhood stores, discover nearby products, and make smarter shopping decisions in real-time.
+          </p>
 
-            {/* Hero Actions */}
-            <div className="hero-actions-row">
-              <Link to="/search" className="primary-action hero-cta-btn">
-                Search Products →
-              </Link>
-              <Link to="/categories" className="ghost-action hero-secondary-btn">
-                Explore Stores
-              </Link>
+          <form className="hero-search-box shadow-glow" onSubmit={submitSearch}>
+            <div className="search-input-wrapper">
+              <span className="search-icon" aria-hidden="true">🔍</span>
+              <input
+                type="text"
+                className="hero-search-input"
+                placeholder="Find milk, bread, maggi, coffee, or search stores near you..."
+                value={homeSearch}
+                onChange={(e) => setHomeSearch(e.target.value)}
+                aria-label="Search products or stores"
+              />
             </div>
-          </div>
-
-          {/* Clean AI Search Bar */}
-          <form className="home-search-bar ai-search-bar" onSubmit={submitSearch}>
-            <input
-              value={homeSearch}
-              onChange={(event) => setHomeSearch(event.target.value)}
-              placeholder="Ask BazaarHub AI... (e.g. cheapest milk near me)"
-              aria-label="Search BazaarHub AI"
-            />
-            <button className="primary-action hero-search-submit-btn" type="submit">
-              Search
+            <button type="submit" className="hero-search-btn primary-btn">
+              Search ➔
             </button>
           </form>
-
-          {/* Minimal Glass Stats Cards */}
-          <div className="floating-stats-grid">
-            <div className="floating-stat-card">
-              <span className="stat-icon" aria-hidden="true">🏬</span>
-              <div className="stat-info">
-                <strong>50+</strong>
-                <span>Stores</span>
-              </div>
-            </div>
-
-            <div className="floating-stat-card">
-              <span className="stat-icon" aria-hidden="true">📦</span>
-              <div className="stat-info">
-                <strong>1000+</strong>
-                <span>Products</span>
-              </div>
-            </div>
-
-            <div className="floating-stat-card">
-              <span className="stat-icon" aria-hidden="true">⭐</span>
-              <div className="stat-info">
-                <strong>4.8</strong>
-                <span>Rating</span>
-              </div>
-            </div>
-          </div>
         </section>
 
-        {/* Popular Categories Section */}
-        <section className="home-section">
-          <div className="panel-heading compact popular-categories-heading">
-            <h2>Popular Categories</h2>
-            <Link className="link-view-all" to="/categories">
-              View all →
+        {/* Top Product Categories Grid */}
+        <section className="panel category-section">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Explore Markets</p>
+              <h2>Top Product Categories</h2>
+            </div>
+            <Link to="/categories" className="ghost-action">
+              View All Categories ➔
             </Link>
           </div>
-          <div className="home-popular-grid">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, index) => <div className="home-skeleton home-popular-skeleton" key={index} />)
-            ) : categoriesUnavailable ? (
-              <div className="home-category-error">
-                <div>
-                  <p className="eyebrow">Categories unavailable</p>
-                  <h3>We couldn’t load categories right now.</h3>
-                  <p>Please check your connection and try again.</p>
-                </div>
-                <button className="ghost-action" type="button" onClick={() => window.location.reload()}>
-                  Retry
-                </button>
-              </div>
-            ) : (
-              categories.slice(0, 5).map((category) => {
-                const storeCount = categoryStoreCount(category.categoryName);
+
+          {categories.length ? (
+            <div className="category-card-grid">
+              {categories.map((category) => {
                 const slug = categorySlug(category);
+                const storeCount = categoryStoreCount(category.categoryName);
+                const icon = categoryIcons[slug] || "📦";
 
                 return (
-                  <Link key={category.id} className="home-popular-card polished-category-card" to={`/search?category=${encodeURIComponent(slug)}`}>
-                    <div className="home-popular-card-top">
-                      <span className="home-popular-icon" aria-hidden="true">
-                        {categoryIcons[slug] || "🛍️"}
-                      </span>
-                    </div>
-                    <div className="home-popular-copy">
+                  <Link
+                    key={category.id}
+                    to={`/search?category=${encodeURIComponent(slug)}`}
+                    className="category-card hover-glow"
+                  >
+                    <span className="category-emoji" aria-hidden="true">{icon}</span>
+                    <div className="category-info">
                       <h3>{category.categoryName}</h3>
-                      <span className="category-store-badge">{storeCount ? `${storeCount} stores` : "Explore"}</span>
+                      <p>{storeCount} {storeCount === 1 ? "store" : "stores"} available</p>
                     </div>
+                    <span className="category-arrow" aria-hidden="true">➔</span>
                   </Link>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          ) : categoriesUnavailable ? (
+            <EmptyState>No categories available right now.</EmptyState>
+          ) : (
+            <div className="loading-grid">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div className="skeleton-card" key={index} />
+              ))}
+            </div>
+          )}
         </section>
 
-        {/* Featured Stores Section */}
-        <section className="home-section">
-          <div className="panel-heading compact">
+        {/* Featured Top-Rated Stores Grid */}
+        <section className="panel featured-stores-section">
+          <div className="panel-heading">
             <div>
-              <p className="eyebrow">Top rated</p>
-              <h2>Featured stores</h2>
+              <p className="eyebrow">Top Recommendations</p>
+              <h2>Featured Local Stores</h2>
             </div>
+            <Link to="/search" className="ghost-action">
+              View All Stores ➔
+            </Link>
           </div>
-          <div className="store-grid">
-            {loading ? (
-              Array.from({ length: 4 }).map((_, index) => <div className="home-skeleton store-skeleton" key={index} />)
-            ) : featuredStores.length ? (
-              featuredStores.map((store) => (
+
+          {featuredStores.length ? (
+            <div className="store-grid">
+              {featuredStores.map((store) => (
                 <StoreCard
-                  key={store.productId ? `p-${store.productId}` : `s-${store.id}-${store.productName}`}
+                  key={store.id}
                   store={store}
-                  distance={null}
-                  bestDeal={bestPrice !== null && Number(store.price || 0) === bestPrice}
-                  saved={savedIds.has(store.id)}
-                  onSave={toggleSavedStore}
-                  visual
-                  showCompare={false}
+                  isSaved={savedIds.has(store.id)}
+                  onToggleSave={toggleSavedStore}
                 />
-              ))
-            ) : (
-              <EmptyState>No stores available yet. Try again shortly.</EmptyState>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No featured stores found.</EmptyState>
+          )}
         </section>
       </div>
     </div>

@@ -4,6 +4,7 @@ import Toast from "../common/Toast";
 import AuthRequiredModal from "../common/AuthRequiredModal";
 import CompareBar from "../ui/CompareBar";
 import CompareDrawer from "../ui/CompareDrawer";
+import CartDrawer from "../ui/CartDrawer";
 import { useUI } from "../../context/UIContext";
 
 function PageLayout({ children }) {
@@ -24,6 +25,7 @@ function PageLayout({ children }) {
       <main>{children}</main>
       <CompareBar />
       <CompareDrawer />
+      <CartDrawer />
 
       <Footer />
     </div>

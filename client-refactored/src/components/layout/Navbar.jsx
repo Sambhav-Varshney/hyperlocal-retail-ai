@@ -2,6 +2,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { CUSTOMER_NAV_ITEMS, SHOP_OWNER_NAV_ITEMS, ADMIN_NAV_ITEMS } from "../../utils/constants";
+import CartButton from "../ui/CartButton";
 
 function Navbar() {
   const { user, logout } = useAuth();
@@ -81,8 +82,10 @@ function Navbar() {
         ) : null}
       </nav>
 
-      {/* Right Controls: Animated Theme Slider Toggle & User Avatar */}
+      {/* Right Controls: Cart Button, Animated Theme Slider Toggle & User Avatar */}
       <div className="session-box">
+        {userRole === "customer" || !user ? <CartButton /> : null}
+
         <div className="theme-toggle-wrap">
           <button
             type="button"

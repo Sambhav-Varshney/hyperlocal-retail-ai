@@ -1,6 +1,8 @@
 import { useData } from "../context/DataContext";
 import { currency, getBudgetType } from "../utils/format";
 import EmptyState from "../components/common/EmptyState";
+import SmartSavingsCard from "../components/ui/SmartSavingsCard";
+import ShoppingInsightsCard from "../components/ui/ShoppingInsightsCard";
 
 function ComparePage() {
   const { compareStores, removeFromCompare, savedComparisons, saveComparison } = useData();
@@ -28,6 +30,14 @@ function ComparePage() {
             </button>
           ) : null}
         </div>
+
+        {/* Stage 6: Smart Savings & Insights for Compared Products */}
+        {compareStores.length > 0 ? (
+          <div style={{ marginTop: "16px" }}>
+            <SmartSavingsCard items={compareStores} />
+            <ShoppingInsightsCard items={compareStores} />
+          </div>
+        ) : null}
 
         {compareStores.length ? (
           <div className="store-grid">

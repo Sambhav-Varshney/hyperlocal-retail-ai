@@ -3,14 +3,16 @@ import { currency, getBudgetType } from "../../utils/format";
 import { imageForCategory } from "../../assets/homeImages";
 import HomeImage from "../common/HomeImage";
 import { useData } from "../../context/DataContext";
+import { useCart } from "../../context/CartContext";
 
 function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, showCompare = true, onFocusOnMap }) {
   const navigate = useNavigate();
   const { isCompared, addToCompare } = useData();
+  const { addToCart } = useCart();
   const itemId = store.productId ?? store.id;
   const compared = isCompared(itemId);
 
-  // Render ONLY the matched product from the filtered item (do not use featuredProduct, store.products[0], or defaultProduct)
+  // Render ONLY the matched product from the filtered item
   const productName = store.productName || store.product_name || store.name || "Product";
   const price = store.price ?? store.productPrice;
   const image = store.image || store.imageUrl || imageForCategory(store.category);
@@ -29,6 +31,11 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, s
   const handleCompareClick = (event) => {
     event.stopPropagation();
     addToCompare(store);
+  };
+
+  const handleAddToCartClick = (event) => {
+    event.stopPropagation();
+    addToCart(store, store);
   };
 
   return (
@@ -64,7 +71,15 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, s
         <span>{distance ? `${distance.toFixed(1)} km` : "Distance N/A"}</span>
       </div>
       <p className="address-line">{address || "Address available on store details"}</p>
-      <div className="card-actions">
+      <div className="card-actions" style={{ flexWrap: "wrap", gap: "6px" }}>
+        <button
+          type="button"
+          className="primary-action"
+          style={{ padding: "4px 10px", fontSize: "0.78rem" }}
+          onClick={handleAddToCartClick}
+        >
+          + Cart
+        </button>
         <Link to={`/store/${store.id}`} onClick={(event) => event.stopPropagation()}>View details</Link>
         {showCompare ? (
           <button

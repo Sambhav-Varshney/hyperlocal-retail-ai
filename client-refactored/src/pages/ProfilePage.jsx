@@ -2,20 +2,27 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
+import { useCart } from "../context/CartContext";
 import { useUI } from "../context/UIContext";
 import { formatDistance } from "../utils/distanceUtils";
+import { currency } from "../utils/format";
+import { calculateProfileInsights } from "../utils/savingsUtils";
 
 function ProfilePage() {
   const { user, logout } = useAuth();
   const { openAuthModal } = useUI();
   const { savedStores, compareItems, recentSearches, handleSearch, removeSavedStore, stores } = useData();
+  const { shoppingLists, toggleListItem, removeListItem, deleteShoppingList, cartItemCount, cartSubtotal, openCart } = useCart();
+
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("info"); // 'info' | 'history' | 'saved' | 'settings'
+  const [activeTab, setActiveTab] = useState("lists"); // 'lists' | 'insights' | 'info' | 'history' | 'saved' | 'settings'
 
   const userRole = user?.role || "customer";
   const myStore = stores.find(
     (s) => String(s.ownerId || s.owner_id) === String(user?.id) || s.ownerName?.toLowerCase().includes(user?.name?.toLowerCase())
   ) || stores[0];
+
+  const profileInsights = calculateProfileInsights(user, savedStores, recentSearches, compareItems);
 
   const handleLogout = () => {
     if (logout()) navigate("/");
@@ -74,8 +81,24 @@ function ProfilePage() {
             )}
           </div>
 
-          {/* Premium Centered Dark Metric Cards */}
-          <div className="profile-stats-grid">
+          {/* Premium Centered Dark Metric Cards with Stage 8 Basket & Savings Summary */}
+          <div className="profile-stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <div className="profile-metric-card" onClick={openCart} role="button" tabIndex={0} style={{ borderColor: "rgba(59, 130, 246, 0.4)" }}>
+              <span className="metric-large-icon">🛒</span>
+              <div className="metric-content">
+                <strong className="metric-number" style={{ color: "var(--primary)" }}>{cartItemCount} Items</strong>
+                <span className="metric-label">Active Cart ({currency(cartSubtotal)})</span>
+              </div>
+            </div>
+
+            <div className="profile-metric-card" style={{ borderColor: "rgba(34, 197, 94, 0.3)" }}>
+              <span className="metric-large-icon">💰</span>
+              <div className="metric-content">
+                <strong className="metric-number" style={{ color: "#22C55E" }}>{currency(profileInsights.estimatedSavings)}</strong>
+                <span className="metric-label">Estimated Savings</span>
+              </div>
+            </div>
+
             <div className="profile-metric-card" onClick={() => setActiveTab("saved")} role="button" tabIndex={0}>
               <span className="metric-large-icon">⭐</span>
               <div className="metric-content">
@@ -91,20 +114,26 @@ function ProfilePage() {
                 <span className="metric-label">Recent Searches</span>
               </div>
             </div>
-
-            <div className="profile-metric-card">
-              <span className="metric-large-icon">⚖️</span>
-              <div className="metric-content">
-                <strong className="metric-number">{compareItems.length}</strong>
-                <span className="metric-label">Items in Compare</span>
-              </div>
-            </div>
           </div>
         </section>
 
         {/* Profile Navigation Tabs & Content */}
         <section className="panel profile-tab-panel">
           <div className="profile-nav-tabs">
+            <button
+              type="button"
+              className={activeTab === "lists" ? "tab-btn active" : "tab-btn"}
+              onClick={() => setActiveTab("lists")}
+            >
+              📋 Shopping Lists ({shoppingLists.length})
+            </button>
+            <button
+              type="button"
+              className={activeTab === "insights" ? "tab-btn active" : "tab-btn"}
+              onClick={() => setActiveTab("insights")}
+            >
+              💡 Shopping Insights
+            </button>
             <button
               type="button"
               className={activeTab === "info" ? "tab-btn active" : "tab-btn"}
@@ -142,7 +171,128 @@ function ProfilePage() {
           </div>
 
           <div className="profile-tab-content">
-            {/* Tab 1: Personal Info */}
+            {/* Tab 0: Stage 8 Shopping Lists */}
+            {activeTab === "lists" ? (
+              <div className="tab-pane lists-pane">
+                <div className="pane-header">
+                  <h3>Stage 8 — Smart Shopping Lists</h3>
+                </div>
+
+                {shoppingLists.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {shoppingLists.map((list) => (
+                      <div
+                        key={list.id}
+                        style={{
+                          padding: "20px",
+                          borderRadius: "16px",
+                          background: "var(--bg-surface)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                          <strong style={{ fontSize: "1.1rem", color: "var(--text-main)" }}>
+                            📋 {list.name}
+                          </strong>
+                          <button
+                            type="button"
+                            style={{ background: "none", border: "none", color: "#EF4444", cursor: "pointer", fontSize: "0.85rem" }}
+                            onClick={() => deleteShoppingList(list.id)}
+                          >
+                            Delete List
+                          </button>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {list.items.map((item) => (
+                            <div
+                              key={item.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "8px 12px",
+                                borderRadius: "8px",
+                                background: "var(--bg-card)",
+                                border: "1px solid var(--border)",
+                              }}
+                            >
+                              <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", color: item.completed ? "var(--text-muted)" : "var(--text-main)", textDecoration: item.completed ? "line-through" : "none" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={item.completed}
+                                  onChange={() => toggleListItem(list.id, item.id)}
+                                />
+                                <span>{item.text}</span>
+                              </label>
+                              <button
+                                type="button"
+                                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+                                onClick={() => removeListItem(list.id, item.id)}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-text">No active shopping lists found.</p>
+                )}
+              </div>
+            ) : null}
+
+            {/* Tab 1: Stage 6 Shopping Insights */}
+            {activeTab === "insights" ? (
+              <div className="tab-pane insights-pane">
+                <div className="pane-header">
+                  <h3>Stage 6 — Smart Savings & Shopping Insights</h3>
+                </div>
+                <div className="info-fields-grid" style={{ marginBottom: "20px" }}>
+                  <div className="info-field">
+                    <label>Estimated Total Savings</label>
+                    <div style={{ color: "#22C55E", fontWeight: 800, fontSize: "1.2rem" }}>
+                      {currency(profileInsights.estimatedSavings)}
+                    </div>
+                    <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+                      Estimated from your product comparison and store search activity
+                    </span>
+                  </div>
+                  <div className="info-field">
+                    <label>Recent Searches Analyzed</label>
+                    <div>{recentSearches.length} Search Queries</div>
+                  </div>
+                  <div className="info-field">
+                    <label>Items in Comparison</label>
+                    <div>{compareItems.length} Products</div>
+                  </div>
+                  <div className="info-field">
+                    <label>Favorite Local Stores</label>
+                    <div>{savedStores.length} Saved Retailers</div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "20px",
+                    borderRadius: "16px",
+                    background: "var(--bg-surface)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <strong style={{ color: "var(--text-main)", fontSize: "1rem", display: "block", marginBottom: "8px" }}>
+                    💡 Intelligent Shopping Summary
+                  </strong>
+                  <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.92rem", lineHeight: 1.5 }}>
+                    BazaarHub monitors product price variance across local stores. Based on your recent activity, choosing the lowest price retailer for your searched items saves an average of <strong>20-25%</strong> per grocery basket.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Tab 2: Personal Info */}
             {activeTab === "info" ? (
               <div className="tab-pane info-pane">
                 <div className="pane-header">
@@ -197,7 +347,7 @@ function ProfilePage() {
               </div>
             ) : null}
 
-            {/* Tab 2: Search History */}
+            {/* Tab 3: Search History */}
             {activeTab === "history" ? (
               <div className="tab-pane history-pane">
                 <h3>Recent Searches ({recentSearches.length})</h3>
@@ -222,7 +372,7 @@ function ProfilePage() {
               </div>
             ) : null}
 
-            {/* Tab 3: Saved Stores */}
+            {/* Tab 4: Saved Stores */}
             {activeTab === "saved" ? (
               <div className="tab-pane saved-pane">
                 <div className="pane-header">
@@ -262,7 +412,7 @@ function ProfilePage() {
               </div>
             ) : null}
 
-            {/* Tab 4: Settings */}
+            {/* Tab 5: Settings */}
             {activeTab === "settings" && user ? (
               <div className="tab-pane settings-pane">
                 <h3>Preferences & Settings</h3>

@@ -6,6 +6,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { UIProvider, useUI } from "./context/UIContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
+import { CartProvider } from "./context/CartContext";
 import PageLayout from "./components/layout/PageLayout";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 
@@ -28,7 +29,9 @@ function AppProviders({ children }) {
 
   return (
     <AuthProvider onNotify={showToast}>
-      <DataProvider>{children}</DataProvider>
+      <DataProvider>
+        <CartProvider>{children}</CartProvider>
+      </DataProvider>
     </AuthProvider>
   );
 }
@@ -86,18 +89,10 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardRedirect />} />
-        
-        <Route
-          path="/compare"
-          element={
-            <ProtectedRoute>
-              <ComparePage />
-            </ProtectedRoute>
-          }
-        />
 
+        {/* Catch-all redirect */}
+        <Route path="/dashboard" element={<DashboardRedirect />} />
+        <Route path="/compare" element={<ComparePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </PageLayout>
