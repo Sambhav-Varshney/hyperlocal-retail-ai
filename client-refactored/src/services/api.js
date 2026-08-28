@@ -13,8 +13,18 @@ export async function apiRequest(endpoint, options = {}) {
   });
 
   if (response.status === 401) {
-    window.dispatchEvent(new Event("auth:expired"));
-    throw new Error("Your session has expired. Please login again.");
+    if (!endpoint.startsWith("/auth/")) {
+      window.dispatchEvent(new Event("auth:expired"));
+      throw new Error("Your session has expired. Please login again.");
+    }
+    let message = "Invalid email or password";
+    try {
+      const body = await response.json();
+      message = body.message || message;
+    } catch {
+      // Body not JSON
+    }
+    throw new Error(message);
   }
 
   if (!response.ok) {

@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useData } from "../../context/DataContext";
-import { useUI } from "../../context/UIContext";
 import { currency } from "../../utils/format";
 import { optimizeBasket } from "../../utils/cartOptimization";
 
 function CartDrawer() {
+  const navigate = useNavigate();
   const {
     cart,
     isCartOpen,
@@ -20,7 +21,6 @@ function CartDrawer() {
   } = useCart();
 
   const { stores } = useData();
-  const { showToast } = useUI();
   const [showOptimization, setShowOptimization] = useState(false);
 
   if (!isCartOpen) return null;
@@ -28,8 +28,8 @@ function CartDrawer() {
   const optimization = optimizeBasket(cart, stores);
 
   const handlePrepareCheckout = () => {
-    showToast("Basket prepared! Select store pickup options for Stage 9.");
     closeCart();
+    navigate("/checkout");
   };
 
   return (

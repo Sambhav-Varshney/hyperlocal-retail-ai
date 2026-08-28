@@ -885,8 +885,9 @@ h3 { letter-spacing: -0.025em; }
 .ghost-action:hover { border-color: rgba(255, 255, 255, 0.18); background: var(--bg-card-hover); }
 
 .filter-grid { gap: 14px; }
-input, select { min-height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); }
-input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); outline: none; }
+input:not([type="radio"]):not([type="checkbox"]), select { min-height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); }
+input[type="radio"], input[type="checkbox"] { width: 18px !important; height: 18px !important; min-height: 18px !important; accent-color: var(--primary); cursor: pointer; }
+input:focus:not([type="radio"]):not([type="checkbox"]), select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); outline: none; }
 
 .metric-card { padding: 20px; box-shadow: none; }
 .metric-card strong { font-size: 2.15rem; letter-spacing: -.06em; color: var(--ink); }

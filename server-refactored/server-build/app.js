@@ -16,6 +16,7 @@ const searchLogRoutes = require("./routes/searchLogRoutes");
 const userRoutes = require("./routes/userRoutes");
 const shopRoutes = require("./routes/shopRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/api/search-logs", searchLogRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/orders", orderRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

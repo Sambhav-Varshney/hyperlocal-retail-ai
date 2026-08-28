@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import { useCart } from "../context/CartContext";
+import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import { formatDistance } from "../utils/distanceUtils";
 import { currency } from "../utils/format";
@@ -13,15 +14,17 @@ function ProfilePage() {
   const { openAuthModal } = useUI();
   const { savedStores, compareItems, recentSearches, handleSearch, removeSavedStore, stores } = useData();
   const { shoppingLists, toggleListItem, removeListItem, deleteShoppingList, cartItemCount, cartSubtotal, openCart } = useCart();
+  const { getOrdersForRole, reorder } = useOrders();
 
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("lists"); // 'lists' | 'insights' | 'info' | 'history' | 'saved' | 'settings'
+  const [activeTab, setActiveTab] = useState("orders"); // 'orders' | 'lists' | 'insights' | 'info' | 'history' | 'saved' | 'settings'
 
   const userRole = user?.role || "customer";
   const myStore = stores.find(
     (s) => String(s.ownerId || s.owner_id) === String(user?.id) || s.ownerName?.toLowerCase().includes(user?.name?.toLowerCase())
   ) || stores[0];
 
+  const customerOrders = getOrdersForRole("customer", user?.id);
   const profileInsights = calculateProfileInsights(user, savedStores, recentSearches, compareItems);
 
   const handleLogout = () => {
@@ -45,6 +48,12 @@ function ProfilePage() {
 
   const handleProtectedAction = (message) => {
     openAuthModal("/login", message);
+  };
+
+  const handleShopAgainOrder = (orderId) => {
+    if (reorder(orderId)) {
+      navigate("/search");
+    }
   };
 
   const getRoleBadgeLabel = () => {
@@ -81,8 +90,16 @@ function ProfilePage() {
             )}
           </div>
 
-          {/* Premium Centered Dark Metric Cards with Stage 8 Basket & Savings Summary */}
+          {/* Premium Centered Dark Metric Cards with Stage 9 Orders & Savings Summary */}
           <div className="profile-stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <div className="profile-metric-card" onClick={() => setActiveTab("orders")} role="button" tabIndex={0} style={{ borderColor: "rgba(34, 197, 94, 0.4)" }}>
+              <span className="metric-large-icon">🛍️</span>
+              <div className="metric-content">
+                <strong className="metric-number" style={{ color: "#22C55E" }}>{customerOrders.length} Orders</strong>
+                <span className="metric-label">Order History</span>
+              </div>
+            </div>
+
             <div className="profile-metric-card" onClick={openCart} role="button" tabIndex={0} style={{ borderColor: "rgba(59, 130, 246, 0.4)" }}>
               <span className="metric-large-icon">🛒</span>
               <div className="metric-content">
@@ -106,20 +123,19 @@ function ProfilePage() {
                 <span className="metric-label">Saved Stores</span>
               </div>
             </div>
-
-            <div className="profile-metric-card" onClick={() => setActiveTab("history")} role="button" tabIndex={0}>
-              <span className="metric-large-icon">🔍</span>
-              <div className="metric-content">
-                <strong className="metric-number">{recentSearches.length}</strong>
-                <span className="metric-label">Recent Searches</span>
-              </div>
-            </div>
           </div>
         </section>
 
         {/* Profile Navigation Tabs & Content */}
         <section className="panel profile-tab-panel">
           <div className="profile-nav-tabs">
+            <button
+              type="button"
+              className={activeTab === "orders" ? "tab-btn active" : "tab-btn"}
+              onClick={() => setActiveTab("orders")}
+            >
+              🛍️ My Orders ({customerOrders.length})
+            </button>
             <button
               type="button"
               className={activeTab === "lists" ? "tab-btn active" : "tab-btn"}
@@ -171,7 +187,80 @@ function ProfilePage() {
           </div>
 
           <div className="profile-tab-content">
-            {/* Tab 0: Stage 8 Shopping Lists */}
+            {/* Tab 0: Stage 9 Customer Orders & Shop Again */}
+            {activeTab === "orders" ? (
+              <div className="tab-pane orders-pane">
+                <div className="pane-header">
+                  <h3>My Orders & Pickup Status ({customerOrders.length})</h3>
+                </div>
+
+                {customerOrders.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {customerOrders.map((ord) => (
+                      <div
+                        key={ord.id}
+                        style={{
+                          padding: "20px",
+                          borderRadius: "16px",
+                          background: "var(--bg-surface)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "12px" }}>
+                          <div>
+                            <strong style={{ color: "var(--text-main)", fontSize: "1.05rem" }}>{ord.id}</strong>
+                            <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginLeft: "10px" }}>
+                              🏬 Store: {ord.storeName}
+                            </span>
+                          </div>
+                          <span className="insight-badge" style={{ background: "rgba(34, 197, 94, 0.15)", color: "#22C55E", borderColor: "rgba(34, 197, 94, 0.3)" }}>
+                            {ord.orderStatus.replace(/_/g, " ")}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+                          {ord.items.map((item, i) => (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem", color: "var(--text-main)" }}>
+                              <span>• {item.productName} (×{item.quantity})</span>
+                              <strong>{currency(item.unitPrice * item.quantity)}</strong>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", paddingTop: "12px", borderTop: "1px solid var(--border)" }}>
+                          <div>
+                            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>Total Paid: </span>
+                            <strong style={{ color: "#22C55E", fontSize: "1.05rem" }}>{currency(ord.total)}</strong>
+                          </div>
+
+                          <div style={{ display: "flex", gap: "10px" }}>
+                            <Link
+                              to={`/order-confirmation/${ord.id}`}
+                              className="ghost-action"
+                              style={{ padding: "6px 12px", fontSize: "0.82rem", background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-main)" }}
+                            >
+                              Details ➔
+                            </Link>
+                            <button
+                              type="button"
+                              className="primary-action"
+                              style={{ padding: "6px 14px", fontSize: "0.82rem" }}
+                              onClick={() => handleShopAgainOrder(ord.id)}
+                            >
+                              Shop Again 🛍️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-text">No active or previous orders found.</p>
+                )}
+              </div>
+            ) : null}
+
+            {/* Tab 1: Stage 8 Shopping Lists */}
             {activeTab === "lists" ? (
               <div className="tab-pane lists-pane">
                 <div className="pane-header">
@@ -244,7 +333,7 @@ function ProfilePage() {
               </div>
             ) : null}
 
-            {/* Tab 1: Stage 6 Shopping Insights */}
+            {/* Tab 2: Stage 6 Shopping Insights */}
             {activeTab === "insights" ? (
               <div className="tab-pane insights-pane">
                 <div className="pane-header">
@@ -292,7 +381,7 @@ function ProfilePage() {
               </div>
             ) : null}
 
-            {/* Tab 2: Personal Info */}
+            {/* Tab 3: Personal Info */}
             {activeTab === "info" ? (
               <div className="tab-pane info-pane">
                 <div className="pane-header">
@@ -347,7 +436,7 @@ function ProfilePage() {
               </div>
             ) : null}
 
-            {/* Tab 3: Search History */}
+            {/* Tab 4: Search History */}
             {activeTab === "history" ? (
               <div className="tab-pane history-pane">
                 <h3>Recent Searches ({recentSearches.length})</h3>
@@ -372,7 +461,7 @@ function ProfilePage() {
               </div>
             ) : null}
 
-            {/* Tab 4: Saved Stores */}
+            {/* Tab 5: Saved Stores */}
             {activeTab === "saved" ? (
               <div className="tab-pane saved-pane">
                 <div className="pane-header">
@@ -412,7 +501,7 @@ function ProfilePage() {
               </div>
             ) : null}
 
-            {/* Tab 5: Settings */}
+            {/* Tab 6: Settings */}
             {activeTab === "settings" && user ? (
               <div className="tab-pane settings-pane">
                 <h3>Preferences & Settings</h3>

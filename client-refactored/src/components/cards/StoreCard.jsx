@@ -5,7 +5,7 @@ import HomeImage from "../common/HomeImage";
 import { useData } from "../../context/DataContext";
 import { useCart } from "../../context/CartContext";
 
-function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, showCompare = true, onFocusOnMap }) {
+function StoreCard({ store, distance, bestDeal, saved, onSave, visual = true, showCompare = true, onFocusOnMap }) {
   const navigate = useNavigate();
   const { isCompared, addToCompare } = useData();
   const { addToCart } = useCart();
@@ -15,7 +15,7 @@ function StoreCard({ store, distance, bestDeal, saved, onSave, visual = false, s
   // Render ONLY the matched product from the filtered item
   const productName = store.productName || store.product_name || store.name || "Product";
   const price = store.price ?? store.productPrice;
-  const image = store.image || store.imageUrl || imageForCategory(store.category);
+  const image = store.image || store.imageUrl || imageForCategory(store.category, productName);
 
   const address = store.fullAddress || [store.marketArea, store.city, store.state].filter(Boolean).join(", ");
   const isOpen = Boolean(store.isOpen);

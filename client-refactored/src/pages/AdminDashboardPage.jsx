@@ -1,8 +1,11 @@
 import { useSearchParams } from "react-router-dom";
 import { useData } from "../context/DataContext";
+import { useOrders } from "../context/OrderContext";
+import { currency } from "../utils/format";
 
 function AdminDashboardPage() {
   const { users, categories, stores } = useData();
+  const { orders } = useOrders();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const activeTab = searchParams.get("tab") || "dashboard";
@@ -13,6 +16,8 @@ function AdminDashboardPage() {
       setSearchParams({ tab });
     }
   };
+
+  const totalOrderRevenue = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
 
   const topStores = [
     { name: "D-Mart", rating: 4.7, views: "3,245" },
@@ -34,6 +39,14 @@ function AdminDashboardPage() {
             style={{ width: "100%", textAlign: "left", padding: "10px 14px", borderRadius: "10px", border: "none", cursor: "pointer" }}
           >
             📊 Dashboard
+          </button>
+          <button
+            type="button"
+            className={activeTab === "orders" ? "nav-link active" : "nav-link"}
+            onClick={() => setActiveTab("orders")}
+            style={{ width: "100%", textAlign: "left", padding: "10px 14px", borderRadius: "10px", border: "none", cursor: "pointer" }}
+          >
+            🛍️ Orders & Activity ({orders.length})
           </button>
           <button
             type="button"
@@ -107,7 +120,7 @@ function AdminDashboardPage() {
                 </h1>
               </div>
               <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.92rem" }}>
-                Platform overview, user management, and system analytics
+                Platform overview, user management, store transactions, and system analytics
               </p>
             </div>
           </div>
@@ -115,6 +128,17 @@ function AdminDashboardPage() {
 
         {/* 4 KPI Stat Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "20px" }}>
+          <div className="panel" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>Platform Orders</span>
+              <span style={{ fontSize: "1.3rem" }}>🛍️</span>
+            </div>
+            <strong style={{ fontSize: "1.8rem", color: "var(--text-main)", display: "block", margin: "8px 0 2px" }}>
+              {orders.length}
+            </strong>
+            <span style={{ color: "#22C55E", fontSize: "0.8rem" }}>Volume: {currency(totalOrderRevenue)}</span>
+          </div>
+
           <div className="panel" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>Users</span>
@@ -139,17 +163,6 @@ function AdminDashboardPage() {
 
           <div className="panel" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>Products</span>
-              <span style={{ fontSize: "1.3rem" }}>📦</span>
-            </div>
-            <strong style={{ fontSize: "1.8rem", color: "var(--text-main)", display: "block", margin: "8px 0 2px" }}>
-              5,432
-            </strong>
-            <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>Total products</span>
-          </div>
-
-          <div className="panel" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "20px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>Searches</span>
               <span style={{ fontSize: "1.3rem" }}>🔍</span>
             </div>
@@ -161,7 +174,26 @@ function AdminDashboardPage() {
         </div>
 
         {/* Dynamic Section based on activeTab */}
-        {activeTab === "users" ? (
+        {activeTab === "orders" ? (
+          <section className="panel" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "20px", padding: "24px" }}>
+            <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem", color: "var(--text-main)" }}>Platform Orders & Activity ({orders.length})</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {orders.map((o) => (
+                <div key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderRadius: "12px", background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+                  <div>
+                    <strong style={{ color: "var(--text-main)" }}>{o.id}</strong> • <span style={{ color: "var(--primary)" }}>{o.storeName}</span>
+                    <p style={{ margin: "2px 0 0", color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                      Customer: {o.customerName} • Items: {o.items.length} • Total: {currency(o.total)}
+                    </p>
+                  </div>
+                  <span className="insight-badge" style={{ background: "rgba(34, 197, 94, 0.15)", color: "#22C55E", borderColor: "rgba(34, 197, 94, 0.3)" }}>
+                    {o.orderStatus.replace(/_/g, " ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : activeTab === "users" ? (
           <section className="panel" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "20px", padding: "24px" }}>
             <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem", color: "var(--text-main)" }}>Registered Users ({users.length})</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -247,12 +279,10 @@ function AdminDashboardPage() {
                       <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
-                  {/* Horizontal Grid lines */}
                   <line x1="0" y1="30" x2="500" y2="30" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
                   <line x1="0" y1="75" x2="500" y2="75" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
                   <line x1="0" y1="120" x2="500" y2="120" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
 
-                  {/* Trend Path */}
                   <path
                     d="M 0,90 Q 60,110 120,60 T 240,40 T 360,80 T 500,20 L 500,150 L 0,150 Z"
                     fill="url(#blueGradient)"

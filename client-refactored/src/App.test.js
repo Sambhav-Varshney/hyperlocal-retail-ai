@@ -125,3 +125,24 @@ test("allows shop_owner role to view /shop/dashboard", async () => {
     expect(screen.getByText("Shop Owner Menu")).toBeInTheDocument();
   });
 });
+
+test("checkout page renders empty cart state when no items in cart", async () => {
+  localStorage.setItem("bazaarhub_guest", "true");
+  renderAt("/checkout");
+  await waitFor(() => {
+    expect(screen.getByRole("heading", { name: "Your cart is empty" })).toBeInTheDocument();
+  });
+});
+
+test("shop owner dashboard shows Store Orders tab", async () => {
+  localStorage.setItem(
+    "authUser",
+    JSON.stringify({ id: 2, name: "D-Mart Owner", email: "shopowner@bazaarhub.com", role: "shop_owner" })
+  );
+  localStorage.setItem("authToken", "fake-token");
+
+  renderAt("/shop/dashboard?tab=orders");
+  await waitFor(() => {
+    expect(screen.getByRole("heading", { name: /Fulfillment Orders for/i })).toBeInTheDocument();
+  });
+});

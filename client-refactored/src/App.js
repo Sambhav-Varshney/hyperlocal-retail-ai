@@ -7,6 +7,7 @@ import { UIProvider, useUI } from "./context/UIContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
 import { CartProvider } from "./context/CartContext";
+import { OrderProvider } from "./context/OrderContext";
 import PageLayout from "./components/layout/PageLayout";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 
@@ -22,6 +23,8 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import StoreDetailsPage from "./pages/StoreDetailsPage";
 import ProductDetailsPage from "./pages/ProductDetailsPage";
 import ComparePage from "./pages/ComparePage";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 
 // Inner component so it can consume UIContext (needed by AuthProvider's onNotify).
 function AppProviders({ children }) {
@@ -30,7 +33,9 @@ function AppProviders({ children }) {
   return (
     <AuthProvider onNotify={showToast}>
       <DataProvider>
-        <CartProvider>{children}</CartProvider>
+        <CartProvider>
+          <OrderProvider>{children}</OrderProvider>
+        </CartProvider>
       </DataProvider>
     </AuthProvider>
   );
@@ -64,6 +69,8 @@ function AppRoutes() {
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/saved" element={<SavedPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
         <Route path="/store/:id" element={<StoreDetailsPage />} />
         <Route path="/product/:id" element={<ProductDetailsPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
