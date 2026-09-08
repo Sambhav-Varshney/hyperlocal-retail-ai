@@ -38,16 +38,16 @@ export function getAIMetrics(store, bestPrice) {
   };
 }
 
-export function distanceKm(store, location) {
-  if (!location || !store.latitude || !store.longitude) return null;
-
+export function calculateDistance(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
   const toRad = (value) => (Number(value) * Math.PI) / 180;
-  const lat1 = toRad(location.lat);
-  const deltaLat = toRad(Number(store.latitude) - location.lat);
-  const deltaLon = toRad(Number(store.longitude) - location.lon);
+  const radLat1 = toRad(lat1);
+  const deltaLat = toRad(Number(lat2) - Number(lat1));
+  const deltaLon = toRad(Number(lon2) - Number(lon1));
   const a =
     Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(toRad(store.latitude)) * Math.sin(deltaLon / 2) ** 2;
+    Math.cos(radLat1) * Math.cos(toRad(lat2)) * Math.sin(deltaLon / 2) ** 2;
 
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+

@@ -16,6 +16,9 @@ jest.mock("./services/api", () => ({
     getStoreById: jest.fn(),
     login: jest.fn(),
     register: jest.fn(),
+    getPaymentConfig: jest.fn(),
+    createPaymentOrder: jest.fn(),
+    verifyPayment: jest.fn(),
   },
 }));
 
@@ -27,6 +30,15 @@ beforeEach(() => {
   api.getSearchLogs.mockResolvedValue([]);
   api.createSearchLog.mockResolvedValue({});
   api.getStoreById.mockResolvedValue(null);
+  api.getPaymentConfig.mockResolvedValue({ keyId: "rzp_test_demo_public_key", mode: "TEST_SANDBOX" });
+  api.createPaymentOrder.mockResolvedValue({
+    paymentId: "PAY-123456",
+    razorpayOrderId: "order_123456",
+    amount: 10000,
+    currency: "INR",
+    keyId: "rzp_test_demo_public_key",
+  });
+  api.verifyPayment.mockResolvedValue({ success: true, verified: true });
 
   api.login.mockImplementation((payload) => {
     if (payload.email === "unregistered@example.com") {

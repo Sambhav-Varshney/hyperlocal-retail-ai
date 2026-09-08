@@ -83,6 +83,28 @@ const api = {
       body: JSON.stringify(payload),
     });
   },
+
+  getPaymentConfig() {
+    return apiRequest("/payments/config");
+  },
+
+  createPaymentOrder(data) {
+    return apiRequest("/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  verifyPayment(data) {
+    return apiRequest("/payments/verify", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  getPaymentStatus(paymentId) {
+    return apiRequest(`/payments/${paymentId}`);
+  },
 };
 
 export default api;

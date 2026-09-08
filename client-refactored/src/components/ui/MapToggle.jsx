@@ -1,4 +1,10 @@
-function MapToggle({ viewMode, setViewMode }) {
+function MapToggle({ viewMode, onChangeViewMode }) {
+  const handleModeChange = (mode) => {
+    if (typeof onChangeViewMode === "function") {
+      onChangeViewMode(mode);
+    }
+  };
+
   return (
     <div
       className="map-view-toggle"
@@ -14,12 +20,12 @@ function MapToggle({ viewMode, setViewMode }) {
       <button
         type="button"
         className={`toggle-tab ${viewMode === "grid" ? "active" : ""}`}
-        onClick={() => setViewMode("grid")}
+        onClick={() => handleModeChange("grid")}
         style={{
           padding: "6px 14px",
           fontSize: "0.82rem",
           fontWeight: 700,
-          borderRadius: "9px",
+          borderRadius: "99px",
           border: "none",
           backgroundColor: viewMode === "grid" ? "var(--accent)" : "transparent",
           color: viewMode === "grid" ? "#ffffff" : "var(--text-muted)",
@@ -33,7 +39,7 @@ function MapToggle({ viewMode, setViewMode }) {
       <button
         type="button"
         className={`toggle-tab ${viewMode === "both" ? "active" : ""}`}
-        onClick={() => setViewMode("both")}
+        onClick={() => handleModeChange("both")}
         style={{
           padding: "6px 14px",
           fontSize: "0.82rem",
@@ -52,7 +58,7 @@ function MapToggle({ viewMode, setViewMode }) {
       <button
         type="button"
         className={`toggle-tab ${viewMode === "map" ? "active" : ""}`}
-        onClick={() => setViewMode("map")}
+        onClick={() => handleModeChange("map")}
         style={{
           padding: "6px 14px",
           fontSize: "0.82rem",

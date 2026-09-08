@@ -1,67 +1,72 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useData } from "../context/DataContext";
-import SearchFilters from "../components/forms/SearchFilters";
-import StoreCard from "../components/cards/StoreCard";
-import NearbyMap from "../components/ui/NearbyMap";
-import RecommendationPanel from "../components/ui/RecommendationPanel";
-import EmptyState from "../components/common/EmptyState";
-import MapToggle from "../components/ui/MapToggle";
 import LocationPermissionAlert from "../components/ui/LocationPermissionAlert";
+import EmptyState from "../components/common/EmptyState";
+import StoreCard from "../components/cards/StoreCard";
+import SearchFilters from "../components/forms/SearchFilters";
+import NearbyMap from "../components/ui/NearbyMap";
+import MapToggle from "../components/ui/MapToggle";
+import RecommendationPanel from "../components/ui/RecommendationPanel";
 import SmartSavingsCard from "../components/ui/SmartSavingsCard";
 import ShoppingInsightsCard from "../components/ui/ShoppingInsightsCard";
 import AIShoppingAgent from "../components/ui/AIShoppingAgent";
+import { useData } from "../context/DataContext";
+import { calculateDistance } from "../utils/format";
 
 function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const {
-    search,
-    setSearch,
-    setCommittedSearch,
-    handleSearch,
-    selectedCategory,
-    setSelectedCategory,
-    budget,
-    setBudget,
-    sortBy,
-    setSortBy,
-    categories,
-    handleUseLocation,
-    location,
-    locationDenied,
-    loading,
-    filteredStores,
-    isFallbackSearch,
-    didYouMeanSuggestions,
-    savedStores,
-  } = useData();
+  const initialCategory = searchParams.get("category") || "";
+  const initialKeyword = searchParams.get("keyword") || searchParams.get("q") || "";
 
+  const { stores, categories, loading, savedStores } = useData();
+
+  const [search, setSearch] = useState(initialKeyword);
+  const [committedSearch, setCommittedSearch] = useState(initialKeyword);
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [budget, setBudget] = useState("");
+  const [sortBy, setSortBy] = useState("relevance");
   const [viewMode, setViewMode] = useState("both"); // "both" | "grid" | "map"
   const [selectedStoreId, setSelectedStoreId] = useState(null);
 
-  const visibleProducts = filteredStores;
-  const initializedQueryRef = useRef(null);
+  const [location, setLocation] = useState({ lat: 28.6139, lng: 77.209, address: "Connaught Place, New Delhi" });
+  const [locationDenied, setLocationDenied] = useState(false);
 
-  // Sync with URL params ONCE per distinct URL parameter change
   useEffect(() => {
-    const categoryParam = searchParams.get("category");
-    const queryParam = searchParams.get("q") || searchParams.get("keyword");
-
-    if (queryParam !== null && queryParam !== undefined && queryParam !== initializedQueryRef.current) {
-      initializedQueryRef.current = queryParam;
-      setSearch(queryParam);
-      setCommittedSearch(queryParam);
+    const queryCat = searchParams.get("category");
+    const queryKw = searchParams.get("keyword") || searchParams.get("q");
+    if (queryCat !== null) setSelectedCategory(queryCat);
+    if (queryKw !== null) {
+      setSearch(queryKw);
+      setCommittedSearch(queryKw);
     }
-    if (categoryParam) {
-      const matchedCategory = categories.find(
-        (category) => category.slug === categoryParam || category.categoryName.toLowerCase() === categoryParam.toLowerCase()
+  }, [searchParams]);
+
+  const handleUseLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocation({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            address: "Your Current Location",
+          });
+          setLocationDenied(false);
+        },
+        () => {
+          setLocationDenied(true);
+        }
       );
-      setSelectedCategory(matchedCategory?.slug || matchedCategory?.id || categoryParam);
+    } else {
+      setLocationDenied(true);
     }
-  }, [searchParams, categories, setSearch, setCommittedSearch, setSelectedCategory]);
+  };
 
-  const onSearchSubmit = (explicitQuery) => {
-    const term = explicitQuery !== undefined ? explicitQuery : search;
+  const handleSearch = (term) => {
+    setCommittedSearch(term);
+  };
+
+  const onSearchSubmit = (term) => {
+    setSearch(term);
     handleSearch(term);
     setSearchParams(term ? { keyword: term } : {});
   };
@@ -73,12 +78,59 @@ function SearchPage() {
 
   const savedIds = new Set(savedStores.map((store) => store.id));
 
+  // Product relevance & filtering engine
+  const activeTerm = committedSearch.trim().toLowerCase();
+  const maxBudget = budget ? Number(budget) : null;
+
+  let filtered = stores.filter((store) => {
+    if (selectedCategory && store.category?.toLowerCase() !== selectedCategory.toLowerCase()) {
+      return false;
+    }
+    if (maxBudget && store.price > maxBudget) {
+      return false;
+    }
+    if (activeTerm) {
+      const matchName = store.productName?.toLowerCase().includes(activeTerm);
+      const matchStore = store.storeName?.toLowerCase().includes(activeTerm);
+      const matchCategory = store.category?.toLowerCase().includes(activeTerm);
+      const matchBrand = store.brand?.toLowerCase().includes(activeTerm);
+      const matchCity = store.city?.toLowerCase().includes(activeTerm);
+      return matchName || matchStore || matchCategory || matchBrand || matchCity;
+    }
+    return true;
+  });
+
+  const isFallbackSearch = Boolean(activeTerm && filtered.length === 0);
+  if (isFallbackSearch) {
+    filtered = stores.slice(0, 8);
+  }
+
+  const sortedProducts = [...filtered].sort((a, b) => {
+    if (sortBy === "price_asc") return a.price - b.price;
+    if (sortBy === "price_desc") return b.price - a.price;
+    if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
+    if (sortBy === "distance") {
+      const distA = calculateDistance(location.lat, location.lng, a.latitude, a.longitude);
+      const distB = calculateDistance(location.lat, location.lng, b.latitude, b.longitude);
+      return distA - distB;
+    }
+    return 0;
+  });
+
+  const visibleProducts = sortedProducts;
+
+  const didYouMeanSuggestions = isFallbackSearch && activeTerm
+    ? ["Snacks", "Dairy", "Groceries", "Beverages", "Amul Toned Milk", "Maggi Noodles"].filter(
+        (s) => s.toLowerCase() !== activeTerm
+      ).slice(0, 3)
+    : [];
+
+  const layoutContainerClass = viewMode === "grid" ? "content-grid single-column-layout" : "content-grid";
+
   return (
-    <div className="content-grid">
+    <div className={layoutContainerClass}>
       <div className="results-column">
-        {locationDenied ? (
-          <LocationPermissionAlert onTryAgain={handleUseLocation} />
-        ) : null}
+        {locationDenied ? <LocationPermissionAlert onTryAgain={handleUseLocation} /> : null}
 
         {/* Stage 7: AI Shopping Agent */}
         <AIShoppingAgent />
@@ -146,68 +198,76 @@ function SearchPage() {
           </>
         ) : null}
 
-        {/* Full-width Map View (if viewMode === "map") */}
-        {viewMode === "map" ? (
-          <div style={{ marginBottom: "24px" }}>
-            <NearbyMap
-              stores={visibleProducts}
-              location={location}
-              selectedStoreId={selectedStoreId}
-              onSelectStore={setSelectedStoreId}
-              compact={false}
-            />
-          </div>
-        ) : null}
-
-        {/* Grid Results Panel (rendered in "both" and "grid" view modes) */}
-        {viewMode !== "map" ? (
-          <div className="panel search-results-panel">
-            <div className="results-header" style={{ flexWrap: "wrap", gap: "12px" }}>
-              <div>
-                <p className="eyebrow">Results</p>
-                <h2>
-                  {isFallbackSearch
-                    ? `Recommended Products (${visibleProducts.length})`
-                    : visibleProducts.length
-                    ? `${visibleProducts.length} ${visibleProducts.length === 1 ? "result" : "results"} found`
-                    : "No results found"}
-                </h2>
-              </div>
-              <MapToggle viewMode={viewMode} onChangeViewMode={setViewMode} totalStores={visibleProducts.length} />
+        {/* Main Search Panel: Always renders Header + MapToggle */}
+        <div className="panel search-results-panel">
+          <div className="results-header" style={{ flexWrap: "wrap", gap: "12px", marginBottom: "18px" }}>
+            <div>
+              <p className="eyebrow">Results</p>
+              <h2>
+                {isFallbackSearch
+                  ? `Recommended Products (${visibleProducts.length})`
+                  : visibleProducts.length
+                  ? `${visibleProducts.length} ${visibleProducts.length === 1 ? "result" : "results"} found`
+                  : "No results found"}
+              </h2>
             </div>
-
-            {visibleProducts.length ? (
-              <div className="store-grid">
-                {visibleProducts.map((store) => (
-                  <StoreCard
-                    key={`${store.id}-${store.productId || store.productName}`}
-                    store={store}
-                    isSaved={savedIds.has(store.id)}
-                    onFocusMap={handleFocusStoreOnMap}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState>No products or stores match your filters. Try clearing budget or category filters.</EmptyState>
-            )}
+            {/* MapToggle control bar is ALWAYS visible so user can switch between Grid, Split View, and Map View anytime */}
+            <MapToggle viewMode={viewMode} onChangeViewMode={setViewMode} totalStores={visibleProducts.length} />
           </div>
-        ) : null}
+
+          {/* If viewMode === "map", display interactive map directly below header */}
+          {viewMode === "map" ? (
+            <div style={{ marginBottom: "24px" }}>
+              <NearbyMap
+                stores={visibleProducts}
+                location={location}
+                selectedStoreId={selectedStoreId}
+                onSelectStore={setSelectedStoreId}
+                compact={false}
+              />
+            </div>
+          ) : null}
+
+          {visibleProducts.length ? (
+            <div
+              className="store-grid"
+              style={
+                viewMode === "grid"
+                  ? { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }
+                  : undefined
+              }
+            >
+              {visibleProducts.map((store) => (
+                <StoreCard
+                  key={`${store.id}-${store.productId || store.productName}`}
+                  store={store}
+                  isSaved={savedIds.has(store.id)}
+                  onFocusMap={handleFocusStoreOnMap}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No products or stores match your filters. Try clearing budget or category filters.</EmptyState>
+          )}
+        </div>
       </div>
 
-      <div className="sidebar-column">
-        {viewMode === "both" ? (
-          <div style={{ marginBottom: "24px" }}>
-            <NearbyMap
-              stores={visibleProducts}
-              location={location}
-              selectedStoreId={selectedStoreId}
-              onSelectStore={setSelectedStoreId}
-              compact={true}
-            />
-          </div>
-        ) : null}
-        <RecommendationPanel stores={visibleProducts} />
-      </div>
+      {viewMode !== "grid" ? (
+        <div className="sidebar-column">
+          {viewMode === "both" ? (
+            <div style={{ position: "sticky", top: "90px", marginBottom: "24px", zIndex: 5 }}>
+              <NearbyMap
+                stores={visibleProducts}
+                location={location}
+                selectedStoreId={selectedStoreId}
+                onSelectStore={setSelectedStoreId}
+                compact={true}
+              />
+            </div>
+          ) : null}
+          <RecommendationPanel stores={visibleProducts} />
+        </div>
+      ) : null}
     </div>
   );
 }
