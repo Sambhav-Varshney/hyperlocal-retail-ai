@@ -27,10 +27,17 @@ beforeEach(() => {
   api.getSearchLogs.mockResolvedValue([]);
   api.createSearchLog.mockResolvedValue({});
   api.getStoreById.mockResolvedValue(null);
-  api.login.mockResolvedValue({
-    user: { id: 1, name: "Test User", email: "test@example.com", role: "customer" },
-    token: "fake-token",
+
+  api.login.mockImplementation((payload) => {
+    if (payload.email === "unregistered@example.com") {
+      return Promise.reject(new Error("User not registered. Please create an account first."));
+    }
+    return Promise.resolve({
+      user: { id: 1, name: "Test User", email: payload.email || "customer@bazaarhub.com", role: "customer" },
+      token: "fake-token",
+    });
   });
+
   api.register.mockResolvedValue({
     id: 2,
     name: "New User",

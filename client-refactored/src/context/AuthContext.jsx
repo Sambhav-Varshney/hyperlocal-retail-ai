@@ -4,10 +4,63 @@ import { safeJSONParse } from "../utils/format";
 
 const AuthContext = createContext(null);
 
+// Default Pre-Registered Accounts for Demo & Role Testing
+const DEFAULT_REGISTERED_USERS = [
+  {
+    id: 1,
+    name: "Sambhav Varshney",
+    email: "customer@bazaarhub.com",
+    password: "password123",
+    role: "customer",
+  },
+  {
+    id: 2,
+    name: "D-Mart Owner",
+    email: "shopowner@bazaarhub.com",
+    password: "password123",
+    role: "shop_owner",
+  },
+  {
+    id: 3,
+    name: "Admin User",
+    email: "admin@bazaarhub.com",
+    password: "password123",
+    role: "admin",
+  },
+  {
+    id: 4,
+    name: "Sambhav Varshney",
+    email: "svvarshney649@gmail.com",
+    password: "password123",
+    role: "customer",
+  },
+  {
+    id: 5,
+    name: "D-Mart Owner",
+    email: "owner@dmart.com",
+    password: "password123",
+    role: "shop_owner",
+  },
+];
+
 export function AuthProvider({ children, onNotify }) {
   const [user, setUser] = useState(() => safeJSONParse(localStorage.getItem("authUser")) || null);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem("bazaarhub_guest") === "true");
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Persistent Registered Users list (combines defaults + user registrations)
+  const [registeredUsers, setRegisteredUsers] = useState(() => {
+    const saved = safeJSONParse(localStorage.getItem("bazaarhub_registered_users"));
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      return saved;
+    }
+    return DEFAULT_REGISTERED_USERS;
+  });
+
+  // Sync registered users to LocalStorage
+  useEffect(() => {
+    localStorage.setItem("bazaarhub_registered_users", JSON.stringify(registeredUsers));
+  }, [registeredUsers]);
 
   useEffect(() => {
     const onExpired = () => {
@@ -23,7 +76,6 @@ export function AuthProvider({ children, onNotify }) {
   }, [onNotify]);
 
   const persistSession = (auth) => {
-    // Ensure role is mapped cleanly: 'admin' | 'shop_owner' | 'customer'
     let role = auth.user?.role || "customer";
     if (role === "user") role = "customer";
 
@@ -45,67 +97,100 @@ export function AuthProvider({ children, onNotify }) {
     onNotify?.("Continuing as guest");
   };
 
+  /**
+   * Login handler: Validates credentials against backend or registered user registry.
+   */
   const login = async (payload) => {
     setAuthLoading(true);
+    const inputEmail = (payload.email || "").trim().toLowerCase();
+    const inputPassword = payload.password || "";
+
     try {
+      // 1. Try real backend API first if available
       const auth = await api.login(payload);
       persistSession(auth);
       onNotify?.("Logged in successfully");
       return { success: true };
-    } catch (error) {
-      // Fallback for offline backend or local UI testing
-      const emailLower = (payload.email || "").toLowerCase();
-      let assignedRole = "customer";
-      if (emailLower.includes("admin")) {
-        assignedRole = "admin";
-      } else if (emailLower.includes("owner") || emailLower.includes("shop") || emailLower.includes("dmart")) {
-        assignedRole = "shop_owner";
+    } catch (apiError) {
+      // 2. Check registration registry
+      const matchedUser = registeredUsers.find((u) => u.email.toLowerCase() === inputEmail);
+
+      if (!matchedUser) {
+        onNotify?.("User not registered. Please create an account first.", "error");
+        return { success: false, error: "User not registered. Please create an account first." };
       }
 
-      const nameFromEmail = payload.email ? payload.email.split("@")[0] : "Demo User";
-      const formattedName = nameFromEmail
-        .replace(/[._]/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+      // Check password if provided (for non-empty input)
+      if (inputPassword && matchedUser.password && matchedUser.password !== inputPassword) {
+        onNotify?.("Invalid email or password.", "error");
+        return { success: false, error: "Invalid email or password." };
+      }
 
-      const demoAuth = {
+      const verifiedAuth = {
         user: {
-          id: assignedRole === "admin" ? 3 : assignedRole === "shop_owner" ? 2 : 1,
-          name: formattedName || (assignedRole === "admin" ? "Admin User" : assignedRole === "shop_owner" ? "D-Mart Owner" : "Sambhav"),
-          email: payload.email || "user@bazaarhub.com",
-          role: assignedRole,
+          id: matchedUser.id,
+          name: matchedUser.name,
+          email: matchedUser.email,
+          role: matchedUser.role,
         },
-        token: "demo-jwt-token-" + Date.now(),
+        token: "jwt-session-token-" + Date.now(),
       };
 
-      persistSession(demoAuth);
-      onNotify?.(`Logged in as ${assignedRole.replace("_", " ")}`);
+      persistSession(verifiedAuth);
+      onNotify?.(`Logged in as ${matchedUser.role.replace("_", " ")}`);
       return { success: true };
     } finally {
       setAuthLoading(false);
     }
   };
 
+  /**
+   * Register handler: Creates a new user in the registry and logs them in.
+   */
   const register = async (payload) => {
     setAuthLoading(true);
+    const inputEmail = (payload.email || "").trim().toLowerCase();
+    const inputName = payload.name || "New User";
+    const inputPassword = payload.password || "password123";
+
     try {
-      await api.register(payload);
-      const auth = await api.login({ email: payload.email, password: payload.password });
-      persistSession(auth);
-      onNotify?.("Account created and logged in");
-      return { success: true };
-    } catch (error) {
-      const demoAuth = {
-        user: {
-          id: Date.now(),
-          name: payload.name || "New User",
-          email: payload.email,
-          role: "customer",
-        },
-        token: "demo-jwt-token-" + Date.now(),
+      // Check duplicate
+      const exists = registeredUsers.some((u) => u.email.toLowerCase() === inputEmail);
+      if (exists) {
+        onNotify?.("An account with that email already exists. Please login.", "error");
+        return { success: false, error: "An account with that email already exists. Please login." };
+      }
+
+      const newUser = {
+        id: Date.now(),
+        name: inputName,
+        email: inputEmail,
+        password: inputPassword,
+        role: "customer",
       };
 
-      persistSession(demoAuth);
-      onNotify?.("Account created and logged in");
+      // Update registered users registry
+      setRegisteredUsers((prev) => [...prev, newUser]);
+
+      // Try API register
+      try {
+        await api.register(payload);
+      } catch {
+        // API offline fallback
+      }
+
+      const newAuth = {
+        user: {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+        },
+        token: "jwt-session-token-" + Date.now(),
+      };
+
+      persistSession(newAuth);
+      onNotify?.("Account registered and logged in successfully!");
       return { success: true };
     } finally {
       setAuthLoading(false);
@@ -132,6 +217,7 @@ export function AuthProvider({ children, onNotify }) {
       value={{
         user,
         isGuest,
+        registeredUsers,
         continueAsGuest,
         authLoading,
         login,
